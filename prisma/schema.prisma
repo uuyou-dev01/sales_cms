@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Item {
+  itemId              String             @id
+  itemName            String
+  itemMfgDate         DateTime
+  itemNumber          String
+  itemType            String
+  itemBrand           String
+  itemCondition       String
+  itemRemarks         String
+  itemColor           String
+  itemStatus          String
+  itemSize            String
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deleted             Boolean            @default(false)
+  photos              String[]
+  position            String?
+  warehousePositionId String?
+  warehousePosition   WarehousePosition? @relation(fields: [warehousePositionId], references: [id])
+  transactions        Transaction[]
+}
+
+model Transaction {
+  id                        String    @id @default(cuid())
+  itemId                    String
+  shipping                  String
+  transactionStatues        String
+  purchaseDate              DateTime
+  soldDate                  DateTime?
+  purchaseAmount            String
+  launchDate                DateTime?
+  purchasePlatform          String
+  soldPlatform              String
+  purchasePrice             String
+  purchasePriceCurrency     String
+  purchasePriceExchangeRate String
+  soldPrice                 String
+  soldPriceCurrency         String
+  soldPriceExchangeRate     String
+  itemGrossProfit           String
+  itemNetProfit             String
+  isReturn                  Boolean
+  returnFee                 String
+  storageDuration           String
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  item                      Item      @relation(fields: [itemId], references: [itemId])
+}
+
+model productRefPrice {
+  itemId               String   @id
+  itemName             String
+  itemMfgDate          DateTime
+  itemNumber           String
+  itemType             String
+  itemBrand            String
+  itemCondition        String
+  itemRemarks          String
+  itemColor            String
+  itemStatus           String
+  itemSize             String
+  refPrice             String
+  refPriceCurrency     String
+  refPriceExchangeRate String
+  refPriceCNY          String
+  refDate              DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// 仓库模型
+model Warehouse {
+  id          String             @id @default(cuid())
+  name        String             // 仓库名称，如"家庭仓"、"办公间"
+  description String?            // 仓库描述
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  positions   WarehousePosition[]
+}
+
+// 仓位模型
+model WarehousePosition {
+  id          String     @id @default(cuid())
+  name        String     // 仓位名称，如"A区"、"B区"
+  capacity    Int        // 最大容量
+  used        Int        @default(0) // 已使用容量
+  warehouseId String
+  warehouse   Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  items       Item[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
