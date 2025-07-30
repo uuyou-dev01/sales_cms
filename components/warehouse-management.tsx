@@ -9,15 +9,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { 
   Warehouse, 
-  Package, 
   Plus, 
   Edit, 
   Trash2, 
   MapPin, 
   Building2, 
-  Box,
-  Settings,
-  AlertCircle
 } from "lucide-react";
 
 interface WarehousePosition {

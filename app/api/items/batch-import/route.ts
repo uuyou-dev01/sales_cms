@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parse } from "csv-parse";
 import { Readable } from "stream";
+import { revalidateTag } from "next/cache";
 
 interface ImportResult {
   success: boolean;
@@ -214,6 +215,12 @@ export async function POST(req: Request) {
     });
 
     result.success = result.summary.errorCount === 0;
+
+    // 重新验证缓存
+    revalidateTag('items');
+    revalidateTag('stats');
+    revalidateTag('months');
+    revalidateTag('warehouses');
 
     return NextResponse.json(result);
   } catch (error) {

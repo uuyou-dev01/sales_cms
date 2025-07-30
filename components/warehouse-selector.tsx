@@ -1,6 +1,5 @@
 "use client";
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Building2, Package } from "lucide-react";

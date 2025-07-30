@@ -1,99 +1,116 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getCachedItems } from "@/lib/cache";
 
-// GET /api/items/list?page=1&pageSize=20&status=xxx&position=xxx&start=2024-01-01&end=2024-02-01&search=xxx
+// GET /api/items/list?page=1&pageSize=20&status=xxx&size=xxx&platform=xxx&dateSort=asc&priceSort=desc&search=xxx
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "20", 10);
     const status = searchParams.get("status") || undefined;
+    const size = searchParams.get("size") || undefined;
+    const platform = searchParams.get("platform") || undefined;
+    const dateSort = searchParams.get("dateSort") || undefined;
+    const priceSort = searchParams.get("priceSort") || undefined;
+    const durationSort = searchParams.get("durationSort") || undefined;
+    const search = searchParams.get("search") || undefined;
     const start = searchParams.get("start") ? new Date(searchParams.get("start")!) : undefined;
     const end = searchParams.get("end") ? new Date(searchParams.get("end")!) : undefined;
-    const search = searchParams.get("search") || undefined;
 
-    const where: {
-      itemStatus?: string;
-      OR?: Array<{
-        itemName?: { contains: string; mode: "insensitive" };
-        itemId?: { contains: string; mode: "insensitive" };
-        itemBrand?: { contains: string; mode: "insensitive" };
-        itemType?: { contains: string; mode: "insensitive" };
-        itemSize?: { contains: string; mode: "insensitive" };
-      }>;
-      transactions?: {
-        some: {
-          purchaseDate: {
-            gte?: Date;
-            lte?: Date;
-          };
-        };
-      };
-    } = {};
+    // 从缓存获取所有数据
+    const allItems = await getCachedItems();
 
-    if (status) where.itemStatus = status;
-    
-    // 搜索功能
-    if (search && search.trim()) {
-      where.OR = [
-        { itemName: { contains: search.trim(), mode: "insensitive" } },
-        { itemId: { contains: search.trim(), mode: "insensitive" } },
-        { itemBrand: { contains: search.trim(), mode: "insensitive" } },
-        { itemType: { contains: search.trim(), mode: "insensitive" } },
-        { itemSize: { contains: search.trim(), mode: "insensitive" } },
-      ];
-    }
+    // 前端筛选
+    let filteredItems = allItems.filter(item => {
+      // 状态筛选
+      if (status && status !== "all" && item.itemStatus !== status) {
+        return false;
+      }
 
-    if (start || end) {
-      where.transactions = {
-        some: {
-          purchaseDate: {},
-        },
-      };
-      if (start) where.transactions.some.purchaseDate.gte = start;
-      if (end) where.transactions.some.purchaseDate.lte = end;
-    }
+      // 尺寸筛选
+      if (size && size !== "all" && item.itemSize !== size) {
+        return false;
+      }
 
-    const items = await prisma.item.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: {
-        itemId: true,
-        itemName: true,
-        itemSize: true,
-        itemStatus: true,
-        itemBrand: true,
-        itemType: true,
-        itemCondition: true,
-        itemColor: true,
-        itemRemarks: true,
-        createdAt: true,
-        updatedAt: true,
-        transactions: {
-          orderBy: { purchaseDate: "desc" },
-          select: {
-            purchaseDate: true,
-            purchaseAmount: true,
-            soldPrice: true,
-            itemNetProfit: true,
-            itemGrossProfit: true,
-            purchasePlatform: true,
-          },
-        },
-      },
+      // 平台筛选
+      if (platform && platform !== "all") {
+        const transaction = item.transactions[0];
+        if (!transaction || transaction.purchasePlatform !== platform) {
+          return false;
+        }
+      }
+
+      // 日期范围筛选
+      if (start || end) {
+        const transaction = item.transactions[0];
+        if (!transaction) return false;
+        
+        const purchaseDate = new Date(transaction.purchaseDate);
+        if (start && purchaseDate < start) return false;
+        if (end && purchaseDate > end) return false;
+      }
+
+      // 搜索筛选
+      if (search && search.trim()) {
+        const searchTerm = search.trim().toLowerCase();
+        const matchesSearch = 
+          item.itemName.toLowerCase().includes(searchTerm) ||
+          item.itemId.toLowerCase().includes(searchTerm) ||
+          (item.itemBrand && item.itemBrand.toLowerCase().includes(searchTerm)) ||
+          (item.itemType && item.itemType.toLowerCase().includes(searchTerm)) ||
+          (item.itemSize && item.itemSize.toLowerCase().includes(searchTerm));
+        
+        if (!matchesSearch) return false;
+      }
+
+      return true;
     });
-    
-    const total = await prisma.item.count({ where });
 
-    return NextResponse.json({ items, total, page, pageSize });
+    // 前端排序
+    if (dateSort) {
+      filteredItems.sort((a, b) => {
+        const dateA = a.transactions[0]?.purchaseDate || "";
+        const dateB = b.transactions[0]?.purchaseDate || "";
+        return dateSort === "asc" 
+          ? dateA.localeCompare(dateB)
+          : dateB.localeCompare(dateA);
+      });
+    } else if (priceSort) {
+      filteredItems.sort((a, b) => {
+        const priceA = parseFloat(a.transactions[0]?.purchaseAmount || "0");
+        const priceB = parseFloat(b.transactions[0]?.purchaseAmount || "0");
+        return priceSort === "asc" ? priceA - priceB : priceB - priceA;
+      });
+    } else if (durationSort) {
+      filteredItems.sort((a, b) => {
+        const transactionA = a.transactions[0];
+        const transactionB = b.transactions[0];
+        
+        if (!transactionA || !transactionB) return 0;
+        
+        const durationA = Date.now() - new Date(transactionA.purchaseDate).getTime();
+        const durationB = Date.now() - new Date(transactionB.purchaseDate).getTime();
+        
+        return durationSort === "asc" ? durationA - durationB : durationB - durationA;
+      });
+    }
+
+    // 分页
+    const total = filteredItems.length;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedItems = filteredItems.slice(startIndex, endIndex);
+
+    return NextResponse.json({ 
+      items: paginatedItems, 
+      total, 
+      page, 
+      pageSize,
+      filteredCount: filteredItems.length,
+      totalCount: allItems.length
+    });
   } catch (error) {
-    console.error("获取商品列表错误:", error);
-    console.error("错误详情:", {
-      message: error instanceof Error ? error.message : "未知错误",
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    console.error("获取商品列表错误:", error || "未知错误");
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "获取商品列表失败" },
       { status: 500 }

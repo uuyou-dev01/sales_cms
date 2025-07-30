@@ -112,6 +112,10 @@ export default function SalesPage() {
   const [editItem, setEditItem] = React.useState<Item | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [dateSort, setDateSort] = React.useState<"asc" | "desc" | null>(null);
+  const [durationSort, setDurationSort] = React.useState<"asc" | "desc" | null>(null);
+  const [priceSort, setPriceSort] = React.useState<"asc" | "desc" | null>(null);
+  const [sizeFilter, setSizeFilter] = React.useState<string>("all");
+  const [platformFilter, setPlatformFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState("");
 
   React.useEffect(() => {
@@ -123,6 +127,11 @@ export default function SalesPage() {
       ...(start ? { start } : {}),
       ...(end ? { end } : {}),
       ...(searchQuery ? { search: searchQuery } : {}),
+      ...(sizeFilter && sizeFilter !== "all" ? { size: sizeFilter } : {}),
+      ...(platformFilter && platformFilter !== "all" ? { platform: platformFilter } : {}),
+      ...(dateSort ? { dateSort } : {}),
+      ...(durationSort ? { durationSort } : {}),
+      ...(priceSort ? { priceSort } : {}),
     });
     fetch(`/api/items/list?${params.toString()}`)
       .then((res) => res.json())
@@ -134,7 +143,7 @@ export default function SalesPage() {
         toast({ title: "获取数据失败", variant: "destructive" });
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, status, start, end, searchQuery, refreshFlag, toast]);
+  }, [page, pageSize, status, start, end, searchQuery, sizeFilter, platformFilter, dateSort, durationSort, priceSort, refreshFlag, toast]);
 
   const handleDelete = async (itemId: string) => {
     if (!window.confirm("确定要删除该商品吗？")) return;
@@ -366,30 +375,135 @@ export default function SalesPage() {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     在库时长
+                    <button
+                      onClick={() => setDurationSort(durationSort === "asc" ? "desc" : "asc")}
+                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    >
+                      {durationSort === "asc" ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : durationSort === "desc" ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
                     <Tag className="w-4 h-4" />
                     尺寸
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                          <Filter className="w-3 h-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-32">
+                        <DropdownMenuItem onClick={() => setSizeFilter("all")}>
+                          全部尺寸
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSizeFilter("S")}>
+                          S
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSizeFilter("M")}>
+                          M
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSizeFilter("L")}>
+                          L
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSizeFilter("XL")}>
+                          XL
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSizeFilter("42")}>
+                          42
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSizeFilter("43")}>
+                          43
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSizeFilter("44")}>
+                          44
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4" />
                     状态
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                          <Filter className="w-3 h-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-32">
+                        <DropdownMenuItem onClick={() => setStatus("all")}>
+                          全部状态
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus("pending")}>
+                          进行中
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus("completed")}>
+                          已完成
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus("cancelled")}>
+                          已取消
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
                     购入价格
+                    <button
+                      onClick={() => setPriceSort(priceSort === "asc" ? "desc" : "asc")}
+                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    >
+                      {priceSort === "asc" ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : priceSort === "desc" ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
                     <ShoppingCart className="w-4 h-4" />
                     购入平台
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                          <Filter className="w-3 h-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-32">
+                        <DropdownMenuItem onClick={() => setPlatformFilter("all")}>
+                          全部平台
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPlatformFilter("淘宝")}>
+                          淘宝
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPlatformFilter("京东")}>
+                          京东
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPlatformFilter("闲鱼")}>
+                          闲鱼
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPlatformFilter("转转")}>
+                          转转
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setPlatformFilter("拼多多")}>
+                          拼多多
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
