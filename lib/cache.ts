@@ -6,6 +6,7 @@ export const getCachedItems = unstable_cache(
   async () => {
     return await prisma.item.findMany({
       where: { deleted: false },
+      orderBy: { createdAt: 'desc' }, // 按创建时间降序，新商品在最上面
       include: {
         transactions: {
           orderBy: { purchaseDate: 'desc' },
@@ -16,6 +17,7 @@ export const getCachedItems = unstable_cache(
             itemNetProfit: true,
             itemGrossProfit: true,
             purchasePlatform: true,
+            transactionStatues: true,
           },
         },
         warehousePosition: {

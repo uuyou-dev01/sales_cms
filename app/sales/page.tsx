@@ -12,26 +12,19 @@ import BatchImport from "@/components/batch-import";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { WarehouseStats } from "@/components/warehouse-stats";
+import { STATUS_CONFIG, TRANSACTION_STATUSES } from "@/lib/constants";
 
 function StatusBadge({ status }: { status: string }) {
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case "completed":
-        return { color: "bg-green-100 text-green-800 border-green-200", icon: "✓" };
-      case "pending":
-        return { color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: "⏳" };
-      case "cancelled":
-        return { color: "bg-red-100 text-red-800 border-red-200", icon: "✗" };
-      default:
-        return { color: "bg-gray-100 text-gray-800 border-gray-200", icon: "?" };
-    }
+  const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || {
+    color: "bg-gray-100 text-gray-800 border-gray-200",
+    icon: "?",
+    description: "未知状态",
   };
 
-  const config = getStatusConfig(status);
   return (
     <Badge variant="outline" className={`${config.color} border`}>
       <span className="mr-1">{config.icon}</span>
-      {status === "completed" ? "已完成" : status === "pending" ? "进行中" : status === "cancelled" ? "已取消" : status}
+      {status}
     </Badge>
   );
 }
@@ -302,14 +295,26 @@ export default function SalesPage() {
                 <DropdownMenuItem onClick={() => setStatus("all")}>
                   全部状态
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatus("pending")}>
-                  进行中
+                <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.IN_TRANSIT_DOMESTIC)}>
+                  在途（国内）
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatus("completed")}>
+                <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.IN_TRANSIT_JAPAN)}>
+                  在途（日本）
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.NOT_LISTED)}>
+                  未上架
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.LISTED)}>
+                  已上架
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.IN_TRANSACTION)}>
+                  交易中
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.RETURNING)}>
+                  退货中
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.COMPLETED)}>
                   已完成
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatus("cancelled")}>
-                  已取消
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -442,14 +447,26 @@ export default function SalesPage() {
                         <DropdownMenuItem onClick={() => setStatus("all")}>
                           全部状态
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStatus("pending")}>
-                          进行中
+                        <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.IN_TRANSIT_DOMESTIC)}>
+                          在途（国内）
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStatus("completed")}>
+                        <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.IN_TRANSIT_JAPAN)}>
+                          在途（日本）
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.NOT_LISTED)}>
+                          未上架
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.LISTED)}>
+                          已上架
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.IN_TRANSACTION)}>
+                          交易中
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.RETURNING)}>
+                          退货中
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatus(TRANSACTION_STATUSES.COMPLETED)}>
                           已完成
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStatus("cancelled")}>
-                          已取消
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

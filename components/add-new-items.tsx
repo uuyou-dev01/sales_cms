@@ -46,6 +46,7 @@ import { PricePrediction } from "@/components/price-prediction";
 import { WarehouseSelector } from "@/components/warehouse-selector";
 import { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { STATUS_OPTIONS } from "@/lib/constants";
 
 // 根据Prisma schema定义表单验证规则
 const formSchema = z.object({
@@ -150,7 +151,7 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
       itemCondition: "",
       itemRemarks: "",
       itemColor: "",
-      itemStatus: "pending",
+              itemStatus: "未上架",
       itemSize: "",
       position: "",
       photos: [],
@@ -447,10 +448,10 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <span className="text-lg">🔢</span>
-                    商品编号
+                    商品货号
                   </FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="商品编号" />
+                    <Input {...field} placeholder="商品货号" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -518,10 +519,11 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="pending">⏳ 待处理</SelectItem>
-                      <SelectItem value="in_stock">📦 在库</SelectItem>
-                      <SelectItem value="sold">💰 已售出</SelectItem>
-                      <SelectItem value="returned">🔄 已退货</SelectItem>
+                      {STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -1163,8 +1165,17 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 }
 
 export default function TransactionModal({ existingData = null }: { existingData?: FormData | null }) {
+  const [open, setOpen] = React.useState(false);
+
+  const handleSuccess = () => {
+    // 关闭对话框
+    setOpen(false);
+    // 刷新页面数据
+    window.location.reload();
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="flex items-center gap-2">
           {existingData ? (
@@ -1187,9 +1198,7 @@ export default function TransactionModal({ existingData = null }: { existingData
             {existingData ? "编辑商品信息" : "添加新商品"}
           </DialogTitle>
         </DialogHeader>
-        <TransactionForm existingData={existingData} onSuccess={() => {
-          // 刷新父组件的列表或状态
-        }} />
+        <TransactionForm existingData={existingData} onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   );
