@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, DollarSign } from "lucide-react";
-import { OTHER_FEE_OPTIONS } from "@/lib/constants";
+import { OTHER_FEE_OPTIONS, CURRENCY_OPTIONS } from "@/lib/constants";
 
 interface OtherFee {
   id: string;
   type: string;
   amount: string;
+  currency: string;
   description: string;
 }
 
@@ -27,6 +28,7 @@ export function OtherFeesManager({ fees, onFeesChange }: OtherFeesManagerProps) 
       id: Date.now().toString(),
       type: OTHER_FEE_OPTIONS[0].value,
       amount: "",
+      currency: "JPY",
       description: "",
     };
     onFeesChange([...fees, newFee]);
@@ -93,7 +95,7 @@ export function OtherFeesManager({ fees, onFeesChange }: OtherFeesManagerProps) 
                   </Button>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">费用类型</label>
                     <Select value={fee.type} onValueChange={(value) => updateFee(fee.id, 'type', value)}>
@@ -114,7 +116,23 @@ export function OtherFeesManager({ fees, onFeesChange }: OtherFeesManagerProps) 
                   </div>
                   
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">金额 (¥)</label>
+                    <label className="text-xs text-gray-500 mb-1 block">货币</label>
+                    <Select value={fee.currency} onValueChange={(value) => updateFee(fee.id, 'currency', value)}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">金额</label>
                     <Input
                       type="number"
                       value={fee.amount}

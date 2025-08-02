@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Plus, Upload, X, Save, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Upload, X, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -46,7 +46,41 @@ import { useToast } from "@/hooks/use-toast";
 import { WarehouseSelector } from "@/components/warehouse-selector";
 import { PricePredictionPanel } from "@/components/price-prediction-panel";
 import { OtherFeesManager } from "@/components/other-fees-manager";
-import { STATUS_OPTIONS, LISTING_PLATFORM_OPTIONS } from "@/lib/constants";
+import { STATUS_OPTIONS, LISTING_PLATFORM_OPTIONS, CURRENCY_OPTIONS } from "@/lib/constants";
+
+// 价格预测数据接口
+interface PredictionData {
+  costBreakdown: {
+    purchasePrice: number;
+    domesticShipping: number;
+    internationalShipping: number;
+    totalCost: number;
+    japanShippingFee: number;
+    platformFeeRate: number;
+    totalCostWithFees: number;
+  };
+  pricing: {
+    suggestedPrice: number;
+    profitRate: number;
+    targetPlatform: string;
+    profitAmount: number;
+    profitMargin: number;
+  };
+  similarSales: {
+    totalSales: number;
+    averagePrice: number;
+    minPrice: number;
+    maxPrice: number;
+    recentSales: Array<{
+      price: string;
+      date: string;
+      platform: string;
+      itemName: string;
+      size: string;
+      condition: string;
+    }>;
+  } | null;
+}
 
 // 表单数据接口
 interface FormData {
@@ -74,7 +108,6 @@ interface FormData {
   warehousePositionId: string;
   listingPlatforms: string[];
   isReturn: boolean;
-  returnFee: string;
   
   // 售出信息
   soldDate: Date | null;
@@ -89,6 +122,7 @@ interface FormData {
     id: string;
     type: string;
     amount: string;
+    currency: string;
     description: string;
   }>;
   
@@ -130,14 +164,13 @@ const formSchema = z.object({
   warehousePositionId: z.string().optional(),
   listingPlatforms: z.array(z.string()).default([]),
   isReturn: z.boolean().default(false),
-  returnFee: z.string().default("0"),
   
   // 售出信息
   soldDate: z.date().nullable().optional(),
   soldPrice: z.string().default("0"),
   soldPlatform: z.string().default("Mercari"),
-  soldPriceCurrency: z.string().default("CNY"),
-  soldPriceExchangeRate: z.string().default("0.5"),
+  soldPriceCurrency: z.string().default("JPY"),
+  soldPriceExchangeRate: z.string().default("0.05"),
   
   // 图片和其他
   photos: z.array(z.string()).default([]),
@@ -183,6 +216,7 @@ const CONDITION_OPTIONS = [
 // 购入平台选项
 const PURCHASE_PLATFORMS = [
   { value: "闲鱼", label: "闲鱼" },
+  { value: "95分", label: "95分" },
   { value: "转转", label: "转转" },
   { value: "淘宝", label: "淘宝" },
   { value: "拼多多", label: "拼多多" },
@@ -198,24 +232,24 @@ interface TransactionFormProps {
 export function TransactionForm({ existingData, onSuccess }: TransactionFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [pricePrediction, setPricePrediction] = React.useState<any>(null);
+  const [pricePrediction, setPricePrediction] = React.useState<PredictionData | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: existingData || {
       itemId: `ITEM_${Date.now()}`,
-      itemType: "",
+      itemType: "鞋子",
       itemName: "",
-      itemBrand: "",
+      itemBrand: "Nike",
       itemNumber: "",
-      domesticShipping: "0",
-      internationalShipping: "0",
+      domesticShipping: "10",
+      internationalShipping: "100",
       itemSize: "",
-      itemCondition: "",
+      itemCondition: "全新",
       purchasePrice: "",
       purchaseDate: new Date(),
-      itemStatus: "未上架",
-      purchasePlatform: "",
+      itemStatus: "在途（国内）",
+      purchasePlatform: "95分",
       domesticTrackingNumber: "",
       itemMfgDate: "",
       itemColor: "",
@@ -224,12 +258,11 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       warehousePositionId: "",
       listingPlatforms: [],
       isReturn: false,
-      returnFee: "0",
       soldDate: null,
       soldPrice: "0",
       soldPlatform: "",
-      soldPriceCurrency: "CNY",
-      soldPriceExchangeRate: "1",
+      soldPriceCurrency: "JPY",
+      soldPriceExchangeRate: "0.05",
       photos: [],
       otherFees: [],
       itemRemarks: "",
@@ -247,6 +280,32 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
+      // 自动计算在库时间
+      if (data.purchaseDate && data.soldDate) {
+        const days = Math.ceil((data.soldDate.getTime() - data.purchaseDate.getTime()) / (1000 * 60 * 60 * 24));
+        data.storageDuration = days.toString();
+      }
+
+      // 计算净利润
+      const purchasePrice = parseFloat(data.purchasePrice || "0");
+      const domesticShipping = parseFloat(data.domesticShipping || "0");
+      const internationalShipping = parseFloat(data.internationalShipping || "0");
+      const otherFeesTotal = data.otherFees.reduce((sum, fee) => {
+        const amount = parseFloat(fee.amount || "0");
+        const currency = fee.currency || "JPY";
+        const exchangeRate = currency === "JPY" ? 0.05 : 1;
+        return sum + (amount * exchangeRate);
+      }, 0);
+      const soldPrice = parseFloat(data.soldPrice || "0");
+      const soldPriceCurrency = data.soldPriceCurrency || "JPY";
+      const soldPriceExchangeRate = parseFloat(data.soldPriceExchangeRate || "0.05");
+      const soldPriceCNY = soldPrice * soldPriceExchangeRate;
+      const totalCost = purchasePrice + domesticShipping + internationalShipping + otherFeesTotal;
+      const netProfit = soldPriceCNY - totalCost;
+
+      data.itemNetProfit = netProfit.toFixed(2);
+      data.itemGrossProfit = "0"; // 删除grossProfit，设为0
+
       const url = existingData ? "/api/items/update" : "/api/items/create";
       const method = existingData ? "PUT" : "POST";
       
@@ -294,7 +353,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
         const currentPhotos = form.getValues("photos");
         form.setValue("photos", [...currentPhotos, ...result.urls]);
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "上传失败",
         description: "图片上传失败，请重试",
@@ -367,6 +426,8 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                 </FormItem>
               )}
             />
+
+            
 
             <FormField
               control={form.control}
@@ -612,6 +673,19 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
             />
           </div>
         </div>
+        <FormField
+              control={form.control}
+              name="itemRemarks"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>备注</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="输入备注信息" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
         {/* 价格预测模块 */}
         <div className="space-y-4">
@@ -726,21 +800,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
               )}
             />
 
-            {form.watch("isReturn") && (
-              <FormField
-                control={form.control}
-                name="returnFee"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>退货费用 (¥)</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="number" placeholder="0.00" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+
 
             {/* 售出信息 */}
             <FormField
@@ -785,19 +845,60 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="soldPrice"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>售出价格 (¥)</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" placeholder="0.00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="soldPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>售出价格</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" placeholder="0.00" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="soldPriceCurrency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>货币</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择货币" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CURRENCY_OPTIONS.map((currency) => (
+                          <SelectItem key={currency.value} value={currency.value}>
+                            {currency.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="soldPriceExchangeRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>汇率</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" step="0.01" placeholder="0.050" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -891,37 +992,203 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
         <div className="space-y-4">
           <h3 className="text-lg font-semibold border-b pb-2">收益计算</h3>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
               <div>
-                <div className="text-gray-600">总成本</div>
+                <div className="text-gray-600">总成本 (CNY)</div>
                 <div className="font-semibold text-lg">
                   ¥{(() => {
                     const purchasePrice = parseFloat(form.watch("purchasePrice") || "0");
                     const domesticShipping = parseFloat(form.watch("domesticShipping") || "0");
                     const internationalShipping = parseFloat(form.watch("internationalShipping") || "0");
-                    const otherFeesTotal = form.watch("otherFees").reduce((sum, fee) => sum + parseFloat(fee.amount || "0"), 0);
+                    const otherFeesTotal = form.watch("otherFees").reduce((sum, fee) => {
+                      const amount = parseFloat(fee.amount || "0");
+                      const currency = fee.currency || "JPY";
+                      // 如果是日元，转换为人民币（汇率0.05）
+                      const exchangeRate = currency === "JPY" ? 0.05 : 1;
+                      return sum + (amount * exchangeRate);
+                    }, 0);
                     return (purchasePrice + domesticShipping + internationalShipping + otherFeesTotal).toFixed(2);
                   })()}
                 </div>
               </div>
               <div>
-                <div className="text-gray-600">建议售价</div>
+                <div className="text-gray-600">售出价格 (CNY)</div>
                 <div className="font-semibold text-lg text-blue-600">
-                  ¥{pricePrediction?.pricing?.suggestedPrice?.toFixed(2) || "0.00"}
+                  ¥{(() => {
+                    const soldPrice = parseFloat(form.watch("soldPrice") || "0");
+                    const soldPriceCurrency = form.watch("soldPriceCurrency") || "JPY";
+                    const soldPriceExchangeRate = parseFloat(form.watch("soldPriceExchangeRate") || "0.05");
+                    return (soldPrice * soldPriceExchangeRate).toFixed(2);
+                  })()}
                 </div>
               </div>
               <div>
-                <div className="text-gray-600">预计利润</div>
+                <div className="text-gray-600">净利润 (CNY)</div>
                 <div className="font-semibold text-lg text-green-600">
-                  ¥{pricePrediction?.pricing?.profitAmount?.toFixed(2) || "0.00"}
+                  ¥{(() => {
+                    const purchasePrice = parseFloat(form.watch("purchasePrice") || "0");
+                    const domesticShipping = parseFloat(form.watch("domesticShipping") || "0");
+                    const internationalShipping = parseFloat(form.watch("internationalShipping") || "0");
+                    const otherFeesTotal = form.watch("otherFees").reduce((sum, fee) => {
+                      const amount = parseFloat(fee.amount || "0");
+                      const currency = fee.currency || "JPY";
+                      const exchangeRate = currency === "JPY" ? 0.05 : 1;
+                      return sum + (amount * exchangeRate);
+                    }, 0);
+                    const soldPrice = parseFloat(form.watch("soldPrice") || "0");
+                    const soldPriceCurrency = form.watch("soldPriceCurrency") || "JPY";
+                    const soldPriceExchangeRate = parseFloat(form.watch("soldPriceExchangeRate") || "0.05");
+                    const soldPriceCNY = soldPrice * soldPriceExchangeRate;
+                    const totalCost = purchasePrice + domesticShipping + internationalShipping + otherFeesTotal;
+                    return (soldPriceCNY - totalCost).toFixed(2);
+                  })()}
                 </div>
               </div>
               <div>
                 <div className="text-gray-600">利润率</div>
                 <div className="font-semibold text-lg text-green-600">
-                  {pricePrediction?.pricing?.profitMargin?.toFixed(1) || "0"}%
+                  {(() => {
+                    const purchasePrice = parseFloat(form.watch("purchasePrice") || "0");
+                    const domesticShipping = parseFloat(form.watch("domesticShipping") || "0");
+                    const internationalShipping = parseFloat(form.watch("internationalShipping") || "0");
+                    const otherFeesTotal = form.watch("otherFees").reduce((sum, fee) => {
+                      const amount = parseFloat(fee.amount || "0");
+                      const currency = fee.currency || "JPY";
+                      const exchangeRate = currency === "JPY" ? 0.05 : 1;
+                      return sum + (amount * exchangeRate);
+                    }, 0);
+                    const soldPrice = parseFloat(form.watch("soldPrice") || "0");
+                    const soldPriceCurrency = form.watch("soldPriceCurrency") || "JPY";
+                    const soldPriceExchangeRate = parseFloat(form.watch("soldPriceExchangeRate") || "0.05");
+                    const soldPriceCNY = soldPrice * soldPriceExchangeRate;
+                    const totalCost = purchasePrice + domesticShipping + internationalShipping + otherFeesTotal;
+                    const netProfit = soldPriceCNY - totalCost;
+                    const profitMargin = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+                    return `${profitMargin.toFixed(1)}%`;
+                  })()}
                 </div>
               </div>
+            </div>
+
+            {/* 计算过程详情 */}
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="font-medium text-gray-700">计算过程详情</h4>
+              
+              {/* 总成本计算过程 */}
+              <div className="bg-white p-3 rounded border">
+                <div className="text-sm font-medium text-gray-700 mb-2">总成本计算过程：</div>
+                <div className="text-xs space-y-1 text-gray-600">
+                  {(() => {
+                    const purchasePrice = parseFloat(form.watch("purchasePrice") || "0");
+                    const domesticShipping = parseFloat(form.watch("domesticShipping") || "0");
+                    const internationalShipping = parseFloat(form.watch("internationalShipping") || "0");
+                    const otherFees = form.watch("otherFees");
+                    
+                    return (
+                      <>
+                        <div>• 购入价格: ¥{purchasePrice.toFixed(2)}</div>
+                        <div>• 国内运费: ¥{domesticShipping.toFixed(2)}</div>
+                        <div>• 国际运费: ¥{internationalShipping.toFixed(2)}</div>
+                        {otherFees.length > 0 && (
+                          <>
+                            <div>• 其他费用:</div>
+                            {otherFees.map((fee, index) => {
+                              const amount = parseFloat(fee.amount || "0");
+                              const currency = fee.currency || "JPY";
+                              const exchangeRate = currency === "JPY" ? 0.05 : 1;
+                              const amountCNY = amount * exchangeRate;
+                              return (
+                                <div key={index} className="ml-4">
+                                  - {fee.type}: {amount} {currency} = ¥{amountCNY.toFixed(2)} (汇率: {exchangeRate})
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                        <div className="font-medium text-gray-800 mt-2">
+                          总成本 = ¥{purchasePrice.toFixed(2)} + ¥{domesticShipping.toFixed(2)} + ¥{internationalShipping.toFixed(2)} + ¥{otherFees.reduce((sum, fee) => {
+                            const amount = parseFloat(fee.amount || "0");
+                            const currency = fee.currency || "JPY";
+                            const exchangeRate = currency === "JPY" ? 0.05 : 1;
+                            return sum + (amount * exchangeRate);
+                          }, 0).toFixed(2)} = ¥{(purchasePrice + domesticShipping + internationalShipping + otherFees.reduce((sum, fee) => {
+                            const amount = parseFloat(fee.amount || "0");
+                            const currency = fee.currency || "JPY";
+                            const exchangeRate = currency === "JPY" ? 0.05 : 1;
+                            return sum + (amount * exchangeRate);
+                          }, 0)).toFixed(2)}
+                        </div>
+                        {otherFees.length === 0 && (
+                          <div className="text-xs text-gray-500 mt-1">(无其他成本)</div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* 售出价格计算过程 */}
+              <div className="bg-white p-3 rounded border">
+                <div className="text-sm font-medium text-gray-700 mb-2">售出价格计算过程：</div>
+                <div className="text-xs space-y-1 text-gray-600">
+                  {(() => {
+                    const soldPrice = parseFloat(form.watch("soldPrice") || "0");
+                    const soldPriceCurrency = form.watch("soldPriceCurrency") || "JPY";
+                    const soldPriceExchangeRate = parseFloat(form.watch("soldPriceExchangeRate") || "0.05");
+                    const soldPriceCNY = soldPrice * soldPriceExchangeRate;
+                    
+                    return (
+                      <>
+                        <div>• 售出价格: {soldPrice.toFixed(2)} {soldPriceCurrency}</div>
+                        <div>• 汇率: {soldPriceExchangeRate}</div>
+                        <div className="font-medium text-gray-800 mt-2">
+                          售出价格(CNY) = {soldPrice.toFixed(2)} {soldPriceCurrency} × {soldPriceExchangeRate} = ¥{soldPriceCNY.toFixed(2)}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* 净利润和利润率计算过程 */}
+              <div className="bg-white p-3 rounded border">
+                <div className="text-sm font-medium text-gray-700 mb-2">净利润和利润率计算过程：</div>
+                <div className="text-xs space-y-1 text-gray-600">
+                  {(() => {
+                    const purchasePrice = parseFloat(form.watch("purchasePrice") || "0");
+                    const domesticShipping = parseFloat(form.watch("domesticShipping") || "0");
+                    const internationalShipping = parseFloat(form.watch("internationalShipping") || "0");
+                    const otherFeesTotal = form.watch("otherFees").reduce((sum, fee) => {
+                      const amount = parseFloat(fee.amount || "0");
+                      const currency = fee.currency || "JPY";
+                      const exchangeRate = currency === "JPY" ? 0.05 : 1;
+                      return sum + (amount * exchangeRate);
+                    }, 0);
+                    const soldPrice = parseFloat(form.watch("soldPrice") || "0");
+                    const soldPriceCurrency = form.watch("soldPriceCurrency") || "JPY";
+                    const soldPriceExchangeRate = parseFloat(form.watch("soldPriceExchangeRate") || "0.05");
+                    const soldPriceCNY = soldPrice * soldPriceExchangeRate;
+                    const totalCost = purchasePrice + domesticShipping + internationalShipping + otherFeesTotal;
+                    const netProfit = soldPriceCNY - totalCost;
+                    const profitMargin = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+                    
+                    return (
+                      <>
+                        <div>• 售出价格(CNY): ¥{soldPriceCNY.toFixed(2)}</div>
+                        <div>• 总成本(CNY): ¥{totalCost.toFixed(2)}</div>
+                        <div className="font-medium text-gray-800 mt-2">
+                          净利润 = ¥{soldPriceCNY.toFixed(2)} - ¥{totalCost.toFixed(2)} = ¥{netProfit.toFixed(2)}
+                        </div>
+                        <div className="font-medium text-gray-800 mt-1">
+                          利润率 = ¥{netProfit.toFixed(2)} ÷ ¥{totalCost.toFixed(2)} × 100% = {profitMargin.toFixed(1)}%
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+
             </div>
           </div>
         </div>

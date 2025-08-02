@@ -121,4 +121,12 @@ export const PROFIT_RATE_OPTIONS = [
   { value: 0.35, label: "35%" },
   { value: 0.40, label: "40%" },
   { value: 0.50, label: "50%" },
+];
+
+// 货币选项
+export const CURRENCY_OPTIONS = [
+  { value: "CNY", label: "人民币 (CNY)", symbol: "¥" },
+  { value: "JPY", label: "日元 (JPY)", symbol: "¥" },
+  { value: "USD", label: "美元 (USD)", symbol: "$" },
+  { value: "EUR", label: "欧元 (EUR)", symbol: "€" },
 ]; 

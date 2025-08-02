@@ -12,7 +12,7 @@ const PLATFORM_FEES = {
 const JAPAN_SHIPPING_FEE = 800;
 
 // 汇率（日元兑人民币，简化处理）
-const JPY_TO_CNY_RATE = 0.048; // 1日元 ≈ 0.048人民币
+const JPY_TO_CNY_RATE = 0.05; // 1日元 ≈ 0.048人民币
 
 export async function POST(req: Request) {
   try {
@@ -34,9 +34,12 @@ export async function POST(req: Request) {
     const platformFeeRate = PLATFORM_FEES[targetPlatform as keyof typeof PLATFORM_FEES] || PLATFORM_FEES.其他;
     const japanShippingFeeCNY = JAPAN_SHIPPING_FEE * JPY_TO_CNY_RATE;
 
-    // 3. 计算建议售价
+    // 3. 计算建议售价（人民币）
     const totalCostWithFees = totalCost + japanShippingFeeCNY;
-    const suggestedPrice = totalCostWithFees * (1 + profitRate) / (1 - platformFeeRate);
+    const suggestedPriceCNY = totalCostWithFees * (1 + profitRate) / (1 - platformFeeRate);
+    
+    // 4. 计算建议售价（日元）
+    const suggestedPriceJPY = suggestedPriceCNY / JPY_TO_CNY_RATE;
 
     // 4. 查询同款销售记录
     let similarSales = [];
@@ -97,11 +100,12 @@ export async function POST(req: Request) {
         totalCostWithFees,
       },
       pricing: {
-        suggestedPrice: Math.round(suggestedPrice * 100) / 100,
+        suggestedPriceCNY: Math.round(suggestedPriceCNY * 100) / 100,
+        suggestedPriceJPY: Math.round(suggestedPriceJPY * 100) / 100,
         profitRate: profitRate * 100, // 转换为百分比
         targetPlatform,
-        profitAmount: suggestedPrice - totalCostWithFees,
-        profitMargin: ((suggestedPrice - totalCostWithFees) / suggestedPrice) * 100,
+        profitAmount: suggestedPriceCNY - totalCostWithFees,
+        profitMargin: ((suggestedPriceCNY - totalCostWithFees) / suggestedPriceCNY) * 100,
       },
       similarSales: salesStats,
     });
