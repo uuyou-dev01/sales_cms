@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { TransactionForm } from "@/components/add-new-items";
-import TransactionModal from "@/components/add-new-items";
+import TransactionModal, { TransactionForm } from "@/components/add-new-items";
 import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/safe-dialog";
-import { ChevronUp, ChevronDown, MoreHorizontal, Search, Filter, Download, TrendingUp, Package, DollarSign, ShoppingCart, Clock, Calendar, Tag, Eye, Edit, Trash2, RefreshCw } from "lucide-react";
+import { ChevronUp, ChevronDown, MoreHorizontal, Search, Filter, Download, TrendingUp, Package, DollarSign, ShoppingCart, Clock, Calendar, Tag, Eye, Edit, Trash2, RefreshCw, Warehouse } from "lucide-react";
 import BatchImport from "@/components/batch-import";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { WarehouseStats } from "@/components/warehouse-stats";
 import { STATUS_CONFIG, TRANSACTION_STATUSES } from "@/lib/constants";
 
 function StatusBadge({ status }: { status: string }) {
@@ -41,7 +39,7 @@ interface Item {
   itemRemarks?: string;
   transactions?: Array<{
     purchaseDate: string;
-    purchaseAmount: string;
+    purchasePrice: string;
     soldPrice?: string;
     itemNetProfit?: string;
     itemGrossProfit?: string;
@@ -49,45 +47,57 @@ interface Item {
   }>;
 }
 
-// 数据转换函数：将API数据转换为TransactionForm需要的格式
+// 数据转换函数：将API数据转换为TransactionModal需要的格式
 const convertItemToFormData = (item: Item) => {
   const transaction = item.transactions?.[0];
   return {
-    // Item 表字段
+    // 基本信息
     itemId: item.itemId,
-    itemName: item.itemName,
-    itemMfgDate: new Date(), // 默认值，实际应该从数据库获取
-    itemNumber: "",
     itemType: item.itemType || "",
+    itemName: item.itemName,
     itemBrand: item.itemBrand || "",
-    itemCondition: item.itemCondition || "",
-    itemRemarks: item.itemRemarks || "",
-    itemColor: item.itemColor || "",
-    itemStatus: item.itemStatus,
+    itemNumber: "",
+    domesticShipping: "0",
+    internationalShipping: "0",
     itemSize: item.itemSize || "",
-    position: "",
-    photos: [],
-    
-    // Transaction 表字段
-    shipping: "0",
-    transactionStatues: item.itemStatus,
+    itemCondition: item.itemCondition || "",
+    purchasePrice: transaction?.purchasePrice || "0",
     purchaseDate: transaction?.purchaseDate ? new Date(transaction.purchaseDate) : new Date(),
-    soldDate: null,
-    purchaseAmount: transaction?.purchaseAmount || "0",
-    launchDate: null,
+    itemStatus: item.itemStatus,
     purchasePlatform: transaction?.purchasePlatform || "",
-    soldPlatform: "",
-    purchasePrice: transaction?.purchaseAmount || "0",
-    purchasePriceCurrency: "CNY",
-    purchasePriceExchangeRate: "1",
-    soldPrice: transaction?.soldPrice || "0",
-    soldPriceCurrency: "CNY",
-    soldPriceExchangeRate: "1",
-    itemGrossProfit: transaction?.itemGrossProfit || "0",
-    itemNetProfit: transaction?.itemNetProfit || "0",
+    domesticTrackingNumber: "",
+    itemMfgDate: "",
+    itemColor: item.itemColor || "",
+    
+    // 交易信息
+    launchDate: null,
+    storageDuration: "0",
+    warehousePositionId: "",
+    listingPlatforms: [],
     isReturn: false,
     returnFee: "0",
-    storageDuration: "0",
+    
+    // 售出信息
+    soldDate: null,
+    soldPrice: transaction?.soldPrice || "0",
+    soldPlatform: "",
+    soldPriceCurrency: "CNY",
+    soldPriceExchangeRate: "1",
+    
+    // 图片和其他
+    photos: [],
+    otherFees: [],
+    
+    // 其他字段（保持兼容性）
+    itemRemarks: item.itemRemarks || "",
+    shipping: "0",
+    transactionStatues: item.itemStatus,
+    purchaseAmount: transaction?.purchasePrice || "0",
+    purchasePriceCurrency: "CNY",
+    purchasePriceExchangeRate: "1",
+    itemGrossProfit: transaction?.itemGrossProfit || "0",
+    itemNetProfit: transaction?.itemNetProfit || "0",
+    position: "",
   };
 };
 
@@ -112,30 +122,59 @@ export default function SalesPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
 
   React.useEffect(() => {
-    setLoading(true);
-    const params = new URLSearchParams({
-      page: String(page),
-      pageSize: String(pageSize),
-      ...(status && status !== "all" ? { status } : {}),
-      ...(start ? { start } : {}),
-      ...(end ? { end } : {}),
-      ...(searchQuery ? { search: searchQuery } : {}),
-      ...(sizeFilter && sizeFilter !== "all" ? { size: sizeFilter } : {}),
-      ...(platformFilter && platformFilter !== "all" ? { platform: platformFilter } : {}),
-      ...(dateSort ? { dateSort } : {}),
-      ...(durationSort ? { durationSort } : {}),
-      ...(priceSort ? { priceSort } : {}),
-    });
-    fetch(`/api/items/list?${params.toString()}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setItems(data.items);
-        setTotal(data.total);
-      })
-      .catch(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(pageSize),
+          ...(status && status !== "all" ? { status } : {}),
+          ...(start ? { start } : {}),
+          ...(end ? { end } : {}),
+          ...(searchQuery ? { search: searchQuery } : {}),
+          ...(sizeFilter && sizeFilter !== "all" ? { size: sizeFilter } : {}),
+          ...(platformFilter && platformFilter !== "all" ? { platform: platformFilter } : {}),
+          ...(dateSort ? { dateSort } : {}),
+          ...(durationSort ? { durationSort } : {}),
+          ...(priceSort ? { priceSort } : {}),
+        });
+
+        const response = await fetch(`/api/items/list?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const text = await response.text();
+        let data;
+        
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error("JSON解析失败:", parseError);
+          console.error("响应内容:", text);
+          throw new Error("响应格式错误");
+        }
+
+        if (data && data.items) {
+          setItems(data.items);
+          setTotal(data.total || 0);
+        } else {
+          console.error("Invalid data format:", data);
+          setItems([]);
+          setTotal(0);
+        }
+      } catch (error) {
+        console.error("获取数据失败:", error);
         toast({ title: "获取数据失败", variant: "destructive" });
-      })
-      .finally(() => setLoading(false));
+        setItems([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [page, pageSize, status, start, end, searchQuery, sizeFilter, platformFilter, dateSort, durationSort, priceSort, refreshFlag, toast]);
 
   const handleDelete = async (itemId: string) => {
@@ -161,23 +200,41 @@ export default function SalesPage() {
     inStockCount: 0,
     soldCount: 0,
     totalItems: 0,
-    warehouseInfo: "无库位信息",
+    warehouseCount: 0,
   });
 
   // 获取统计数据
   React.useEffect(() => {
-    fetch("/api/items/stats")
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/api/items/stats");
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const text = await response.text();
+        let data;
+        
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error("统计数据JSON解析失败:", parseError);
+          console.error("响应内容:", text);
+          return;
+        }
+
         if (data.error) {
           console.error("获取统计数据失败:", data.error);
         } else {
           setStats(data);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("获取统计数据失败:", error);
-      });
+      }
+    };
+
+    fetchStats();
   }, [refreshFlag]);
 
   return (
@@ -250,8 +307,17 @@ export default function SalesPage() {
           </div>
         </div>
         
-        <div className="lg:col-span-2">
-          <WarehouseStats />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/warehouse'}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">仓库统计</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.warehouseCount || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">点击查看详情</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Warehouse className="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -571,7 +637,7 @@ export default function SalesPage() {
                         <StatusBadge status={item.itemStatus} />
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        ¥{t?.purchaseAmount ? parseFloat(t.purchaseAmount).toLocaleString() : "-"}
+                        ¥{t?.purchasePrice ? parseFloat(t.purchasePrice).toLocaleString() : "-"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {t?.purchasePlatform || "-"}
@@ -661,7 +727,7 @@ export default function SalesPage() {
           setEditItem(null);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />

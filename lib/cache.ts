@@ -12,7 +12,7 @@ export const getCachedItems = unstable_cache(
           orderBy: { purchaseDate: 'desc' },
           select: {
             purchaseDate: true,
-            purchaseAmount: true,
+            purchasePrice: true,
             soldPrice: true,
             itemNetProfit: true,
             itemGrossProfit: true,
@@ -41,29 +41,46 @@ export const getCachedStats = unstable_cache(
     const items = await prisma.item.findMany({
       where: { deleted: false },
       include: {
-        transactions: true,
+        transactions: {
+          select: {
+            purchasePrice: true,
+            soldPrice: true,
+            itemNetProfit: true,
+            itemGrossProfit: true,
+            purchasePlatform: true,
+            transactionStatues: true,
+          },
+        },
       },
     });
 
-    const totalPurchase = items.reduce((sum, item) => {
+    const totalPurchase = items.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
-      return sum + (transaction ? parseFloat(transaction.purchaseAmount) : 0);
+      return sum + (transaction ? parseFloat(transaction.purchasePrice) : 0);
     }, 0);
 
-    const totalSold = items.reduce((sum, item) => {
+    const totalSold = items.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
       return sum + (transaction && transaction.soldPrice ? parseFloat(transaction.soldPrice) : 0);
     }, 0);
 
-    const inStockCount = items.filter(item => item.itemStatus === 'pending').length;
-    const soldCount = items.filter(item => item.itemStatus === 'completed').length;
+    // 在库商品：包括未上架、已上架、交易中、退货中的商品
+    const inStockCount = items.filter((item: any) => 
+      ['未上架', '已上架', '交易中', '退货中'].includes(item.itemStatus)
+    ).length;
+    
+    // 已售出商品：状态为已完成的商品
+    const soldCount = items.filter((item: any) => item.itemStatus === '已完成').length;
 
-    const totalProfit = items.reduce((sum, item) => {
+    const totalProfit = items.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
       return sum + (transaction && transaction.itemNetProfit ? parseFloat(transaction.itemNetProfit) : 0);
     }, 0);
 
     const averageProfitRate = totalPurchase > 0 ? ((totalProfit / totalPurchase) * 100).toFixed(2) : "0.00";
+
+    // 获取仓库数量
+    const warehouseCount = await prisma.warehouse.count();
 
     return {
       totalPurchase,
@@ -72,6 +89,7 @@ export const getCachedStats = unstable_cache(
       inStockCount,
       soldCount,
       totalItems: items.length,
+      warehouseCount,
     };
   },
   ['stats'],
@@ -94,14 +112,14 @@ export const getCachedWarehouseStats = unstable_cache(
       },
     });
 
-    let totalWarehouses = warehouses.length;
+    const totalWarehouses = warehouses.length;
     let totalPositions = 0;
     let totalCapacity = 0;
     let totalUsed = 0;
     let fullPositions = 0;
 
-    warehouses.forEach(warehouse => {
-      warehouse.positions.forEach(position => {
+    warehouses.forEach((warehouse: any) => {
+      warehouse.positions.forEach((position: any) => {
         totalPositions++;
         totalCapacity += position.capacity;
         totalUsed += position.used;
@@ -140,7 +158,7 @@ export const getCachedMonths = unstable_cache(
     });
 
     const months = new Set<string>();
-    transactions.forEach(transaction => {
+    transactions.forEach((transaction: any) => {
       const date = new Date(transaction.purchaseDate);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       months.add(monthKey);

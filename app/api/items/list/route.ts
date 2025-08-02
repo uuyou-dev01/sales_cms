@@ -77,8 +77,8 @@ export async function GET(req: Request) {
       });
     } else if (priceSort) {
       filteredItems.sort((a, b) => {
-        const priceA = parseFloat(a.transactions[0]?.purchaseAmount || "0");
-        const priceB = parseFloat(b.transactions[0]?.purchaseAmount || "0");
+        const priceA = parseFloat(a.transactions[0]?.purchasePrice || "0");
+        const priceB = parseFloat(b.transactions[0]?.purchasePrice || "0");
         return priceSort === "asc" ? priceA - priceB : priceB - priceA;
       });
     } else if (durationSort) {

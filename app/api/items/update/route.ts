@@ -1,63 +1,69 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { revalidateTag } from "next/cache";
 
 export async function PUT(req: Request) {
   try {
-    const data = await req.json();
-    
-    // 获取原商品信息以检查仓库位置变更
-    const originalItem = await prisma.item.findUnique({
-      where: { itemId: data.itemId },
-      select: { warehousePositionId: true },
-    });
+    const body = await req.json();
+    const { itemId, ...data } = body;
 
-    if (!originalItem) {
-      return NextResponse.json(
-        { error: "商品不存在" },
-        { status: 404 }
-      );
-    }
+    // 处理其他费用数据
+    const otherFees = data.otherFees || [];
 
     const result = await prisma.$transaction(async (tx) => {
-      // 更新商品信息
-      const item = await tx.item.update({
-        where: { itemId: data.itemId },
+      // 获取原始商品信息
+      const originalItem = await tx.item.findUnique({
+        where: { itemId },
+        include: { warehousePosition: true },
+      });
+
+      if (!originalItem) {
+        throw new Error("商品不存在");
+      }
+
+      // 更新商品
+      const updatedItem = await tx.item.update({
+        where: { itemId },
         data: {
           itemName: data.itemName,
-          itemMfgDate: data.itemMfgDate ? new Date(data.itemMfgDate) : new Date(),
-          itemNumber: data.itemNumber || "",
+          itemMfgDate: data.itemMfgDate || "",
+          itemNumber: data.itemNumber,
           itemType: data.itemType,
           itemBrand: data.itemBrand,
-          itemCondition: data.itemCondition || "new",
+          itemCondition: data.itemCondition,
           itemRemarks: data.itemRemarks || "",
-          itemColor: data.itemColor || "",
-          itemStatus: data.itemStatus || "pending",
-          itemSize: data.itemSize || "",
+          itemColor: data.itemColor,
+          itemStatus: data.itemStatus,
+          itemSize: data.itemSize,
+          photos: data.photos || [],
           position: data.position || null,
           warehousePositionId: data.warehousePositionId || null,
-          photos: data.photos || [],
         },
       });
-      
+
       // 查找并更新交易记录
       const existingTransaction = await tx.transaction.findFirst({
-        where: { itemId: data.itemId },
+        where: { itemId },
       });
 
       if (existingTransaction) {
         await tx.transaction.update({
           where: { id: existingTransaction.id },
           data: {
-            shipping: data.shipping || "0",
-            transactionStatues: data.transactionStatues || data.itemStatus || "pending",
-            purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : new Date(),
+            shipping: data.shipping || "",
+            domesticShipping: data.domesticShipping || "0",
+            internationalShipping: data.internationalShipping || "0",
+            domesticTrackingNumber: data.domesticTrackingNumber || null,
+            internationalTrackingNumber: data.internationalTrackingNumber || null,
+            transactionStatues: data.transactionStatues || existingTransaction.transactionStatues,
+            purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : existingTransaction.purchaseDate,
             soldDate: data.soldDate ? new Date(data.soldDate) : null,
-            purchaseAmount: data.purchaseAmount || data.purchasePrice || "0",
             launchDate: data.launchDate ? new Date(data.launchDate) : null,
-            purchasePlatform: data.purchasePlatform || "",
+            purchasePlatform: data.purchasePlatform,
             soldPlatform: data.soldPlatform || "",
-            purchasePrice: data.purchasePrice || data.purchaseAmount || "0",
+            listingPlatforms: data.listingPlatforms || [],
+            otherFees: otherFees.length > 0 ? otherFees : null,
+            purchasePrice: data.purchasePrice || "0",
             purchasePriceCurrency: data.purchasePriceCurrency || "CNY",
             purchasePriceExchangeRate: data.purchasePriceExchangeRate || "1",
             soldPrice: data.soldPrice || "0",
@@ -76,53 +82,43 @@ export async function PUT(req: Request) {
       const oldWarehousePositionId = originalItem?.warehousePositionId;
       const newWarehousePositionId = data.warehousePositionId;
 
-      // 如果从旧位置移除商品
       if (oldWarehousePositionId && oldWarehousePositionId !== newWarehousePositionId) {
+        // 减少旧位置的使用量
         await tx.warehousePosition.update({
           where: { id: oldWarehousePositionId },
-          data: {
-            used: {
-              decrement: 1,
-            },
-          },
+          data: { used: { decrement: 1 } },
         });
       }
 
-      // 如果添加到新位置
       if (newWarehousePositionId && newWarehousePositionId !== oldWarehousePositionId) {
-        // 检查新位置容量
+        // 检查新位置是否有足够容量
         const newPosition = await tx.warehousePosition.findUnique({
           where: { id: newWarehousePositionId },
         });
-
+        
         if (newPosition && newPosition.used >= newPosition.capacity) {
           throw new Error(`仓位 ${newPosition.name} 已满`);
         }
 
+        // 增加新位置的使用量
         await tx.warehousePosition.update({
           where: { id: newWarehousePositionId },
-          data: {
-            used: {
-              increment: 1,
-            },
-          },
+          data: { used: { increment: 1 } },
         });
       }
-      
-      return item;
+
+      return updatedItem;
     });
 
     // 重新验证缓存
     revalidateTag('items');
     revalidateTag('stats');
     revalidateTag('months');
-    if (originalItem?.warehousePositionId || data.warehousePositionId) {
-      revalidateTag('warehouses');
-    }
+    revalidateTag('warehouses');
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("更新商品错误:", error || "未知错误");
+    console.error("更新商品失败:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "更新商品失败" },
       { status: 500 }

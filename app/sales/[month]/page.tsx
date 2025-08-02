@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { TransactionForm } from "@/components/add-new-items";
+
 import TransactionModal from "@/components/add-new-items";
 import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/safe-dialog";
 import { ChevronUp, ChevronDown, MoreHorizontal, Search, Filter, Upload, Download, TrendingUp, Package, DollarSign, ShoppingCart, Clock, Calendar, Tag, Eye, Edit, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
@@ -47,7 +47,7 @@ interface Item {
   itemRemarks?: string;
   transactions?: Array<{
     purchaseDate: string;
-    purchaseAmount: string;
+    purchasePrice: string;
     soldPrice?: string;
     itemNetProfit?: string;
     itemGrossProfit?: string;
@@ -59,41 +59,53 @@ interface Item {
 const convertItemToFormData = (item: Item) => {
   const transaction = item.transactions?.[0];
   return {
-    // Item 表字段
+    // 基本信息
     itemId: item.itemId,
-    itemName: item.itemName,
-    itemMfgDate: new Date(), // 默认值，实际应该从数据库获取
-    itemNumber: "",
     itemType: item.itemType || "",
+    itemName: item.itemName,
     itemBrand: item.itemBrand || "",
-    itemCondition: item.itemCondition || "",
-    itemRemarks: item.itemRemarks || "",
-    itemColor: item.itemColor || "",
-    itemStatus: item.itemStatus,
+    itemNumber: "",
+    domesticShipping: "0",
+    internationalShipping: "0",
     itemSize: item.itemSize || "",
-    position: "",
-    photos: [],
-    
-    // Transaction 表字段
-    shipping: "0",
-    transactionStatues: item.itemStatus,
+    itemCondition: item.itemCondition || "",
+    purchasePrice: transaction?.purchasePrice || "0",
     purchaseDate: transaction?.purchaseDate ? new Date(transaction.purchaseDate) : new Date(),
-    soldDate: null,
-    purchaseAmount: transaction?.purchaseAmount || "0",
-    launchDate: null,
+    itemStatus: item.itemStatus,
     purchasePlatform: transaction?.purchasePlatform || "",
-    soldPlatform: "",
-    purchasePrice: transaction?.purchaseAmount || "0",
-    purchasePriceCurrency: "CNY",
-    purchasePriceExchangeRate: "1",
-    soldPrice: transaction?.soldPrice || "0",
-    soldPriceCurrency: "CNY",
-    soldPriceExchangeRate: "1",
-    itemGrossProfit: transaction?.itemGrossProfit || "0",
-    itemNetProfit: transaction?.itemNetProfit || "0",
+    domesticTrackingNumber: "",
+    itemMfgDate: "",
+    itemColor: item.itemColor || "",
+    
+    // 交易信息
+    launchDate: null,
+    storageDuration: "0",
+    warehousePositionId: "",
+    listingPlatforms: [],
     isReturn: false,
     returnFee: "0",
-    storageDuration: "0",
+    
+    // 售出信息
+    soldDate: null,
+    soldPrice: transaction?.soldPrice || "0",
+    soldPlatform: "",
+    soldPriceCurrency: "CNY",
+    soldPriceExchangeRate: "1",
+    
+    // 图片和其他
+    photos: [],
+    otherFees: [],
+    
+    // 其他字段（保持兼容性）
+    itemRemarks: item.itemRemarks || "",
+    shipping: "0",
+    transactionStatues: item.itemStatus,
+    purchaseAmount: transaction?.purchasePrice || "0",
+    purchasePriceCurrency: "CNY",
+    purchasePriceExchangeRate: "1",
+    itemGrossProfit: transaction?.itemGrossProfit || "0",
+    itemNetProfit: transaction?.itemNetProfit || "0",
+    position: "",
   };
 };
 
@@ -459,7 +471,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                         <StatusBadge status={item.itemStatus} />
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        ¥{t?.purchaseAmount ? parseFloat(t.purchaseAmount).toLocaleString() : "-"}
+                        ¥{t?.purchasePrice ? parseFloat(t.purchasePrice).toLocaleString() : "-"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {t?.purchasePlatform || "-"}
@@ -557,13 +569,8 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
             </DialogTitle>
           </DialogHeader>
           {editItem && (
-            <TransactionForm 
+            <TransactionModal 
               existingData={convertItemToFormData(editItem)} 
-              onSuccess={() => {
-                setEditDialogOpen(false);
-                setEditItem(null);
-                setRefreshFlag(prev => prev + 1);
-              }}
             />
           )}
         </DialogContent>

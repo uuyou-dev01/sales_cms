@@ -6,41 +6,51 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // 开始事务
+    // 生成唯一的itemId
+    const itemId = `ITEM_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // 处理其他费用数据
+    const otherFees = body.otherFees || [];
+    
     const result = await prisma.$transaction(async (tx) => {
       // 创建商品
       const item = await tx.item.create({
         data: {
-          itemId: body.itemId,
+          itemId,
           itemName: body.itemName,
-          itemMfgDate: body.itemMfgDate ? new Date(body.itemMfgDate) : new Date(),
-          itemNumber: body.itemNumber || "",
+          itemMfgDate: body.itemMfgDate || "",
+          itemNumber: body.itemNumber,
           itemType: body.itemType,
           itemBrand: body.itemBrand,
-          itemCondition: body.itemCondition || "new",
+          itemCondition: body.itemCondition,
           itemRemarks: body.itemRemarks || "",
-          itemColor: body.itemColor || "",
-          itemStatus: body.itemStatus || "pending",
-          itemSize: body.itemSize || "",
+          itemColor: body.itemColor,
+          itemStatus: body.itemStatus,
+          itemSize: body.itemSize,
+          photos: body.photos || [],
           position: body.position || null,
           warehousePositionId: body.warehousePositionId || null,
-          photos: body.photos || [],
         },
       });
 
       // 创建交易记录
-      await tx.transaction.create({
+      const transaction = await tx.transaction.create({
         data: {
-          itemId: body.itemId,
-          shipping: body.shipping || "0",
-          transactionStatues: body.transactionStatues || body.itemStatus || "pending",
-          purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : new Date(),
+          itemId,
+          shipping: body.shipping || "",
+          domesticShipping: body.domesticShipping || "0",
+          internationalShipping: body.internationalShipping || "0",
+          domesticTrackingNumber: body.domesticTrackingNumber || null,
+          internationalTrackingNumber: body.internationalTrackingNumber || null,
+          transactionStatues: body.transactionStatues,
+          purchaseDate: new Date(body.purchaseDate),
           soldDate: body.soldDate ? new Date(body.soldDate) : null,
-          purchaseAmount: body.purchaseAmount || "0",
           launchDate: body.launchDate ? new Date(body.launchDate) : null,
-          purchasePlatform: body.purchasePlatform || "",
+          purchasePlatform: body.purchasePlatform,
           soldPlatform: body.soldPlatform || "",
-          purchasePrice: body.purchasePrice || body.purchaseAmount || "0",
+          listingPlatforms: body.listingPlatforms || [],
+          otherFees: otherFees.length > 0 ? otherFees : null,
+          purchasePrice: body.purchasePrice || "0",
           purchasePriceCurrency: body.purchasePriceCurrency || "CNY",
           purchasePriceExchangeRate: body.purchasePriceExchangeRate || "1",
           soldPrice: body.soldPrice || "0",
@@ -58,15 +68,11 @@ export async function POST(req: Request) {
       if (body.warehousePositionId) {
         await tx.warehousePosition.update({
           where: { id: body.warehousePositionId },
-          data: {
-            used: {
-              increment: 1,
-            },
-          },
+          data: { used: { increment: 1 } },
         });
       }
 
-      return item;
+      return { item, transaction };
     });
 
     // 重新验证缓存
@@ -79,7 +85,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("创建商品错误:", error || "未知错误");
+    console.error("创建商品失败:", error || "未知错误");
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "创建商品失败" },
       { status: 500 }

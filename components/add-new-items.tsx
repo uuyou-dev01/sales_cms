@@ -1,19 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { CalendarIcon, Package, ShoppingCart, DollarSign, MapPin, Camera, Trash2, Edit, Plus, Tag, Palette, Ruler, Hash, FileText, Globe, TrendingUp, Warehouse, Truck, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-
+import { format } from "date-fns";
+import { Calendar as CalendarIcon, Plus, Upload, X, Save, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -21,11 +21,14 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -38,313 +41,288 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
-import { Separator } from "@/components/ui/separator";
-import { PricePrediction } from "@/components/price-prediction";
+import { useToast } from "@/hooks/use-toast";
 import { WarehouseSelector } from "@/components/warehouse-selector";
-import { useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { STATUS_OPTIONS } from "@/lib/constants";
+import { PricePredictionPanel } from "@/components/price-prediction-panel";
+import { OtherFeesManager } from "@/components/other-fees-manager";
+import { STATUS_OPTIONS, LISTING_PLATFORM_OPTIONS } from "@/lib/constants";
 
-// 根据Prisma schema定义表单验证规则
-const formSchema = z.object({
-  // Item 表字段
-  itemId: z.string().optional(),
-  itemName: z.string().min(1, "商品名不能为空"),
-  itemMfgDate: z.date().optional(),
-  itemNumber: z.string().optional(),
-  itemType: z.string().min(1, "请选择商品类型"),
-  itemBrand: z.string().min(1, "品牌不能为空"),
-  itemCondition: z.string().min(1, "请选择商品成色"),
-  itemRemarks: z.string().optional(),
-  itemColor: z.string().optional(),
-  itemStatus: z.string().min(1, "请选择商品状态"),
-  itemSize: z.string().optional(),
-  position: z.string().optional(),
-  photos: z.array(z.string()).optional(),
-  warehousePositionId: z.string().optional(),
-  
-  // Transaction 表字段
-  shipping: z.string().optional(),
-  transactionStatues: z.string().optional(),
-  purchaseDate: z.date().optional(),
-  soldDate: z.date().nullable().optional(),
-  purchaseAmount: z.string().optional(),
-  launchDate: z.date().nullable().optional(),
-  purchasePlatform: z.string().optional(),
-  soldPlatform: z.string().optional(),
-  purchasePrice: z.string().optional(),
-  purchasePriceCurrency: z.string().optional(),
-  purchasePriceExchangeRate: z.string().optional(),
-  soldPrice: z.string().optional(),
-  soldPriceCurrency: z.string().optional(),
-  soldPriceExchangeRate: z.string().optional(),
-  itemGrossProfit: z.string().optional(),
-  itemNetProfit: z.string().optional(),
-  isReturn: z.boolean().optional(),
-  returnFee: z.string().optional(),
-  storageDuration: z.string().optional(),
-});
-
+// 表单数据接口
 interface FormData {
-  // Item 表字段
-  itemId?: string;
-  itemName: string;
-  itemMfgDate?: Date;
-  itemNumber?: string;
+  // 基本信息
+  itemId: string;
   itemType: string;
+  itemName: string;
   itemBrand: string;
+  itemNumber: string;
+  domesticShipping: string;
+  internationalShipping: string;
+  itemSize: string;
   itemCondition: string;
-  itemRemarks?: string;
-  itemColor?: string;
+  purchasePrice: string;
+  purchaseDate: Date;
   itemStatus: string;
-  itemSize?: string;
-  position?: string;
-  photos?: string[];
-  warehousePositionId?: string;
+  purchasePlatform: string;
+  domesticTrackingNumber: string;
+  itemMfgDate: string;
+  itemColor: string;
   
-  // Transaction 表字段
-  shipping?: string;
-  transactionStatues?: string;
-  purchaseDate?: Date;
-  soldDate?: Date | null;
-  purchaseAmount?: string;
-  launchDate?: Date | null;
-  purchasePlatform?: string;
-  soldPlatform?: string;
-  purchasePrice?: string;
-  purchasePriceCurrency?: string;
-  purchasePriceExchangeRate?: string;
-  soldPrice?: string;
-  soldPriceCurrency?: string;
-  soldPriceExchangeRate?: string;
-  itemGrossProfit?: string;
-  itemNetProfit?: string;
-  isReturn?: boolean;
-  returnFee?: string;
-  storageDuration?: string;
+  // 交易信息
+  launchDate: Date | null;
+  storageDuration: string;
+  warehousePositionId: string;
+  listingPlatforms: string[];
+  isReturn: boolean;
+  returnFee: string;
+  
+  // 售出信息
+  soldDate: Date | null;
+  soldPrice: string;
+  soldPlatform: string;
+  soldPriceCurrency: string;
+  soldPriceExchangeRate: string;
+  
+  // 图片和其他
+  photos: string[];
+  otherFees: Array<{
+    id: string;
+    type: string;
+    amount: string;
+    description: string;
+  }>;
+  
+  // 其他字段（保持兼容性）
+  itemRemarks: string;
+  shipping: string;
+  transactionStatues: string;
+  purchaseAmount: string;
+  purchasePriceCurrency: string;
+  purchasePriceExchangeRate: string;
+  itemGrossProfit: string;
+  itemNetProfit: string;
+  position: string;
 }
 
-// 新增：不包含Dialog的表单组件，用于在现有Dialog内部使用
-export function TransactionForm({ existingData = null, onSuccess }: { existingData?: FormData | null, onSuccess?: () => void }) {
-  const { toast } = useToast();
+// 表单验证模式
+const formSchema = z.object({
+  // 基本信息
+  itemId: z.string().min(1, "请输入商品ID"),
+  itemType: z.string().min(1, "请选择商品类型").default("鞋子"),
+  itemName: z.string().min(1, "请输入商品名称"),
+  itemBrand: z.string().min(1, "请输入品牌").default("Nike"),
+  itemNumber: z.string().min(1, "请输入货号"),
+  domesticShipping: z.string().default("10"),
+  internationalShipping: z.string().default("100"),
+  itemSize: z.string().min(1, "请输入尺码"),
+  itemCondition: z.string().min(1, "请选择成色"),
+  purchasePrice: z.string().min(1, "请输入购入价格"),
+  purchaseDate: z.date().min(new Date("2025-01-01"), "请输入购入日期"),
+  itemStatus: z.string().min(1, "请选择商品状态"),
+  purchasePlatform: z.string().min(1, "请选择购入平台"),
+  domesticTrackingNumber: z.string().optional(),
+  itemMfgDate: z.string().optional(),
+  itemColor: z.string().optional(),
   
-  // 生成简单的商品ID
-  const generateItemId = () => {
-    const timestamp = Date.now().toString().slice(-6); // 取时间戳后6位
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // 3位随机数
-    return `ITEM${timestamp}${random}`;
-  };
+  // 交易信息
+  launchDate: z.date().nullable().optional(),
+  storageDuration: z.string().default("0"),
+  warehousePositionId: z.string().optional(),
+  listingPlatforms: z.array(z.string()).default([]),
+  isReturn: z.boolean().default(false),
+  returnFee: z.string().default("0"),
+  
+  // 售出信息
+  soldDate: z.date().nullable().optional(),
+  soldPrice: z.string().default("0"),
+  soldPlatform: z.string().default("Mercari"),
+  soldPriceCurrency: z.string().default("CNY"),
+  soldPriceExchangeRate: z.string().default("0.5"),
+  
+  // 图片和其他
+  photos: z.array(z.string()).default([]),
+  otherFees: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    amount: z.string(),
+    description: z.string(),
+  })).default([]),
+  
+  // 其他字段
+  itemRemarks: z.string().optional(),
+  shipping: z.string().default(""),
+  transactionStatues: z.string().default("未上架"),
+  purchaseAmount: z.string().default("0"),
+  purchasePriceCurrency: z.string().default("CNY"),
+  purchasePriceExchangeRate: z.string().default("1"),
+  itemGrossProfit: z.string().default("0"),
+  itemNetProfit: z.string().default("0"),
+  position: z.string().optional(),
+});
 
-  const form = useForm({
+// 商品类型选项
+const ITEM_TYPES = [
+  { value: "服装", label: "服装" },
+  { value: "鞋子", label: "鞋子" },
+  { value: "包包", label: "包包" },
+  { value: "配饰", label: "配饰" },
+  { value: "电子产品", label: "电子产品" },
+  { value: "其他", label: "其他" },
+];
+
+// 成色选项
+const CONDITION_OPTIONS = [
+  { value: "全新", label: "全新" },
+  { value: "9成新", label: "9成新" },
+  { value: "8成新", label: "8成新" },
+  { value: "7成新", label: "7成新" },
+  { value: "6成新", label: "6成新" },
+  { value: "5成新及以下", label: "5成新及以下" },
+];
+
+// 购入平台选项
+const PURCHASE_PLATFORMS = [
+  { value: "闲鱼", label: "闲鱼" },
+  { value: "转转", label: "转转" },
+  { value: "淘宝", label: "淘宝" },
+  { value: "拼多多", label: "拼多多" },
+  { value: "京东", label: "京东" },
+  { value: "其他", label: "其他" },
+];
+
+interface TransactionFormProps {
+  existingData?: FormData | null;
+  onSuccess: () => void;
+}
+
+export function TransactionForm({ existingData, onSuccess }: TransactionFormProps) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [pricePrediction, setPricePrediction] = React.useState<any>(null);
+
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: existingData || {
-      // Item 表字段
-      itemId: generateItemId(), // 预生成商品ID
-      itemName: "",
-      itemMfgDate: new Date(),
-      itemNumber: "",
+      itemId: `ITEM_${Date.now()}`,
       itemType: "",
+      itemName: "",
       itemBrand: "",
-      itemCondition: "",
-      itemRemarks: "",
-      itemColor: "",
-              itemStatus: "未上架",
+      itemNumber: "",
+      domesticShipping: "0",
+      internationalShipping: "0",
       itemSize: "",
-      position: "",
-      photos: [],
-      
-      // Transaction 表字段
-      shipping: "100",
-      transactionStatues: "pending",
+      itemCondition: "",
+      purchasePrice: "",
       purchaseDate: new Date(),
-      soldDate: null,
-      purchaseAmount: "0",
-      launchDate: null,
+      itemStatus: "未上架",
       purchasePlatform: "",
-      soldPlatform: "",
-      purchasePrice: "0",
-      purchasePriceCurrency: "CNY",
-      purchasePriceExchangeRate: "1",
-      soldPrice: "0",
-      soldPriceCurrency: "CNY",
-      soldPriceExchangeRate: "1",
-      itemGrossProfit: "0",
-      itemNetProfit: "0",
+      domesticTrackingNumber: "",
+      itemMfgDate: "",
+      itemColor: "",
+      launchDate: null,
+      storageDuration: "0",
+      warehousePositionId: "",
+      listingPlatforms: [],
       isReturn: false,
       returnFee: "0",
-      storageDuration: "0",
+      soldDate: null,
+      soldPrice: "0",
+      soldPlatform: "",
+      soldPriceCurrency: "CNY",
+      soldPriceExchangeRate: "1",
+      photos: [],
+      otherFees: [],
+      itemRemarks: "",
+      shipping: "",
+      transactionStatues: "未上架",
+      purchaseAmount: "0",
+      purchasePriceCurrency: "CNY",
+      purchasePriceExchangeRate: "1",
+      itemGrossProfit: "0",
+      itemNetProfit: "0",
+      position: "",
     },
   });
 
-  const [uploading, setUploading] = useState(false);
-  const [photoUrls, setPhotoUrls] = useState<string[]>(existingData?.photos || []);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    if (!form.watch("purchasePriceCurrency") && !form.watch("purchasePrice")) {
-      form.setValue("purchasePrice", "0");
-    }
-  }, [form]);
-
-  const onPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    setUploading(true);
-    const formData = new FormData();
-    Array.from(files).forEach((file) => formData.append("file", file));
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
-    const data = await res.json();
-    if (data.urls) {
-      setPhotoUrls((prev) => [...prev, ...data.urls]);
-      form.setValue("photos", [...(form.getValues("photos") || []), ...data.urls]);
-    }
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   const onSubmit = async (data: FormData) => {
+    setIsSubmitting(true);
     try {
-      // 商品ID已经在初始化时生成，无需再次生成
-
-      const requestData = {
-        ...data,
-        photos: photoUrls,
-        // 处理日期字段，确保null值被正确传递
-        soldDate: data.soldDate ? data.soldDate.toISOString() : null,
-        launchDate: data.launchDate ? data.launchDate.toISOString() : null,
-        purchaseDate: data.purchaseDate ? data.purchaseDate.toISOString() : new Date().toISOString(),
-        itemMfgDate: data.itemMfgDate ? data.itemMfgDate.toISOString() : new Date().toISOString(),
-        // 处理其他字段
-        purchasePrice: data.purchasePrice?.toString() || "0",
-        soldPrice: data.soldPrice?.toString() || "0",
-        shipping: data.shipping?.toString() || "0",
-        returnFee: data.returnFee?.toString() || "0",
-        itemGrossProfit: data.itemGrossProfit?.toString() || "0",
-        itemNetProfit: data.itemNetProfit?.toString() || "0",
-      };
-
-      const endpoint = existingData ? '/api/items/update' : '/api/items/create';
-      const response = await fetch(endpoint, {
-        method: existingData ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData),
+      const url = existingData ? "/api/items/update" : "/api/items/create";
+      const method = existingData ? "PUT" : "POST";
+      
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '提交失败');
-      }
-      
-      toast({
-        title: existingData ? "更新成功" : "添加成功",
-        description: "商品信息已保存",
-      });
-      
-      // 调用成功回调
-      if (onSuccess) {
+
+      if (response.ok) {
+        toast({
+          title: existingData ? "更新成功" : "添加成功",
+          description: existingData ? "商品信息已更新" : "新商品已添加到数据库",
+        });
         onSuccess();
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || "操作失败");
       }
     } catch (error) {
       toast({
-        title: "错误",
-        description: error instanceof Error ? error.message : "操作失败",
+        title: "操作失败",
+        description: error instanceof Error ? error.message : "未知错误",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleImageUpload = async (files: FileList) => {
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const currentPhotos = form.getValues("photos");
+        form.setValue("photos", [...currentPhotos, ...result.urls]);
+      }
+    } catch (error) {
+      toast({
+        title: "上传失败",
+        description: "图片上传失败，请重试",
         variant: "destructive",
       });
     }
   };
 
-  const handleDelete = async () => {
-    if (!existingData) return;
-    
-    try {
-      const response = await fetch(`/api/items/delete`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: existingData.itemId }),
-      });
-      
-      if (!response.ok) throw new Error('删除失败');
-      
-      toast({
-        title: "删除成功",
-        description: "商品已删除",
-      });
-      
-      // 调用成功回调
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      toast({
-        title: "错误",
-        description: error instanceof Error ? error.message : "操作失败",
-        variant: "destructive",
-      });
-    }
+  const removeImage = (index: number) => {
+    const currentPhotos = form.getValues("photos");
+    form.setValue("photos", currentPhotos.filter((_, i) => i !== index));
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* 基本信息区域 */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-            <Package className="w-6 h-6 text-blue-600" />
-            <div>
-              <h3 className="text-lg font-semibold text-blue-900">📦 基本信息</h3>
-              <p className="text-sm text-blue-700">填写商品的核心信息</p>
-            </div>
-          </div>
-          
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* 第一块：基本信息 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">基本信息</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <FormField
               control={form.control}
               name="itemId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Hash className="w-4 h-4 text-gray-500" />
-                    商品ID
-                  </FormLabel>
+                  <FormLabel>商品ID</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="商品ID" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="itemName"
-              render={({ field }) => (
-                <FormItem className="md:col-span-2">
-                  <FormLabel className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-green-500" />
-                    商品名称
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="请输入商品名称" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="itemBrand"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">🏷️</span>
-                    品牌
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="品牌名称" />
+                    <Input {...field} placeholder="自动生成" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -356,21 +334,19 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
               name="itemType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">📂</span>
-                    商品类型
-                  </FormLabel>
+                  <FormLabel>商品类型</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="选择类型" />
+                        <SelectValue placeholder="选择商品类型" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="球鞋">👟 球鞋</SelectItem>
-                      <SelectItem value="衣服">👕 衣服</SelectItem>
-                      <SelectItem value="配饰">💍 配饰</SelectItem>
-                      <SelectItem value="箱包">👜 箱包</SelectItem>
+                      {ITEM_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -380,44 +356,12 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="itemCondition"
+              name="itemName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">⭐</span>
-                    商品成色
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择成色" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="全新">✨ 全新</SelectItem>
-                      <SelectItem value="9成新">🌟 9成新</SelectItem>
-                      <SelectItem value="8成新">⭐ 8成新</SelectItem>
-                      <SelectItem value="7成新">💫 7成新</SelectItem>
-                      <SelectItem value="6成新">✨ 6成新</SelectItem>
-                      <SelectItem value="5成新">⭐ 5成新</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="itemSize"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Ruler className="w-4 h-4 text-purple-500" />
-                    尺寸
-                  </FormLabel>
+                  <FormLabel>商品名称</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="尺寸规格" />
+                    <Input {...field} placeholder="输入商品名称" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -426,15 +370,12 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="itemColor"
+              name="itemBrand"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-pink-500" />
-                    颜色
-                  </FormLabel>
+                  <FormLabel>品牌</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="商品颜色" />
+                    <Input {...field} placeholder="输入品牌" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -446,12 +387,9 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
               name="itemNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">🔢</span>
-                    商品货号
-                  </FormLabel>
+                  <FormLabel>货号</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="商品货号" />
+                    <Input {...field} placeholder="输入货号" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -460,44 +398,13 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="itemMfgDate"
+              name="domesticShipping"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-orange-500" />
-                    生产日期
-                  </FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>选择日期</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value || undefined}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormLabel>国内运费 (¥)</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="number" placeholder="0.00" />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -505,23 +412,48 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="itemStatus"
+              name="internationalShipping"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">📊</span>
-                    商品状态
-                  </FormLabel>
+                  <FormLabel>国际运费 (¥)</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="number" placeholder="0.00" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="itemSize"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>尺码</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="输入尺码" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="itemCondition"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>成色</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="选择状态" />
+                        <SelectValue placeholder="选择成色" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {STATUS_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                      {CONDITION_OPTIONS.map((condition) => (
+                        <SelectItem key={condition.value} value={condition.value}>
+                          {condition.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -531,69 +463,33 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
               )}
             />
 
-            <FormItem className="md:col-span-2">
-              <FormLabel className="flex items-center gap-2">
-                <Warehouse className="w-4 h-4 text-blue-500" />
-                仓库位置
-              </FormLabel>
-              <WarehouseSelector
-                selectedWarehouseId=""
-                selectedPositionId={form.watch("warehousePositionId") || ""}
-                onWarehouseChange={() => {}}
-                onPositionChange={(positionId) => {
-                  form.setValue("warehousePositionId", positionId);
-                }}
-              />
-            </FormItem>
-
             <FormField
               control={form.control}
-              name="itemRemarks"
+              name="purchasePrice"
               render={({ field }) => (
-                <FormItem className="md:col-span-2 lg:col-span-3">
-                  <FormLabel className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-gray-500" />
-                    备注信息
-                  </FormLabel>
+                <FormItem>
+                  <FormLabel>购入价格 (¥)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="商品备注信息..." rows={3} />
+                    <Input {...field} type="number" placeholder="0.00" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
-        </div>
 
-        <Separator className="my-8" />
-
-        {/* 交易信息区域 */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-            <ShoppingCart className="w-6 h-6 text-green-600" />
-            <div>
-              <h3 className="text-lg font-semibold text-green-900">💰 交易信息</h3>
-              <p className="text-sm text-green-700">填写购买和销售相关信息</p>
-            </div>
-          </div>
-          
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             <FormField
               control={form.control}
               name="purchaseDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-blue-500" />
-                    购入日期
-                  </FormLabel>
+                  <FormLabel>购入时间</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
+                            "w-full pl-3 text-left font-normal h-10",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -625,58 +521,22 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="purchasePlatform"
+              name="itemStatus"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-purple-500" />
-                    购入平台
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="购买平台" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="purchasePrice"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-green-500" />
-                    购入价格
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.01" placeholder="0.00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="purchasePriceCurrency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">💱</span>
-                    购入货币
-                  </FormLabel>
+                  <FormLabel>商品状态</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="选择货币" />
+                        <SelectValue placeholder="选择状态" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="CNY">🇨🇳 CNY</SelectItem>
-                      <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                      <SelectItem value="JPY">🇯🇵 JPY</SelectItem>
-                      <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                      {STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -686,15 +546,37 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="purchasePriceExchangeRate"
+              name="purchasePlatform"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-orange-500" />
-                    汇率
-                  </FormLabel>
+                  <FormLabel>购入平台</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择平台" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PURCHASE_PLATFORMS.map((platform) => (
+                        <SelectItem key={platform.value} value={platform.value}>
+                          {platform.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="domesticTrackingNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>国内发货单号</FormLabel>
                   <FormControl>
-                    <Input {...field} type="number" step="0.0001" placeholder="1.0000" />
+                    <Input {...field} placeholder="输入发货单号" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -703,15 +585,12 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="purchaseAmount"
+              name="itemMfgDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">💵</span>
-                    购入金额
-                  </FormLabel>
+                  <FormLabel>生产日期</FormLabel>
                   <FormControl>
-                    <Input {...field} type="number" step="0.01" placeholder="0.00" />
+                    <Input {...field} placeholder="如：2023年春季" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -720,20 +599,49 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="soldDate"
+              name="itemColor"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-red-500" />
-                    售出日期
-                  </FormLabel>
+                  <FormLabel>颜色</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="输入颜色" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* 价格预测模块 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">价格预测</h3>
+          <PricePredictionPanel
+            purchasePrice={form.watch("purchasePrice")}
+            domesticShipping={form.watch("domesticShipping")}
+            internationalShipping={form.watch("internationalShipping")}
+            itemNumber={form.watch("itemNumber")}
+            onPredictionChange={setPricePrediction}
+          />
+        </div>
+
+        {/* 第二块：交易信息 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">交易信息</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="launchDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>上架时间</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
+                            "w-full pl-3 text-left font-normal h-10",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -758,152 +666,6 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="soldPlatform"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-blue-500" />
-                    售出平台
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="销售平台" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="soldPrice"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-green-500" />
-                    售出价格
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.01" placeholder="0.00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="soldPriceCurrency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">💱</span>
-                    售出货币
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择货币" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="CNY">🇨🇳 CNY</SelectItem>
-                      <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                      <SelectItem value="JPY">🇯🇵 JPY</SelectItem>
-                      <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="soldPriceExchangeRate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-orange-500" />
-                    汇率
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.0001" placeholder="1.0000" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="itemGrossProfit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">📈</span>
-                    毛利润
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.01" placeholder="0.00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="itemNetProfit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">💰</span>
-                    净利润
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.01" placeholder="0.00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="shipping"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-blue-500" />
-                    运费
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.01" placeholder="0.00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="returnFee"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">🔄</span>
-                    退货费用
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" step="0.01" placeholder="0.00" />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -914,10 +676,7 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
               name="storageDuration"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Warehouse className="w-4 h-4 text-gray-500" />
-                    存储时长(天)
-                  </FormLabel>
+                  <FormLabel>在库时长 (天)</FormLabel>
                   <FormControl>
                     <Input {...field} type="number" placeholder="0" />
                   </FormControl>
@@ -928,25 +687,18 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
 
             <FormField
               control={form.control}
-              name="transactionStatues"
+              name="warehousePositionId"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">📊</span>
-                    交易状态
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择状态" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="pending">⏳ 进行中</SelectItem>
-                      <SelectItem value="completed">✅ 已完成</SelectItem>
-                      <SelectItem value="cancelled">❌ 已取消</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <FormItem className="md:col-span-2">
+                  <FormLabel>入库位置</FormLabel>
+                  <WarehouseSelector
+                    selectedWarehouseId=""
+                    selectedPositionId={field.value || ""}
+                    onWarehouseChange={() => {}}
+                    onPositionChange={(positionId) => {
+                      field.onChange(positionId);
+                    }}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -956,43 +708,54 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
               control={form.control}
               name="isReturn"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <span className="text-lg">🔄</span>
-                    是否退货
-                  </FormLabel>
-                  <Select onValueChange={(value) => field.onChange(value === 'true')} value={field.value?.toString()}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="false">❌ 否</SelectItem>
-                      <SelectItem value="true">✅ 是</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>是否产生退货</FormLabel>
+                    <FormDescription>
+                      如果商品有退货情况，请勾选此项
+                    </FormDescription>
+                  </div>
                 </FormItem>
               )}
             />
 
+            {form.watch("isReturn") && (
+              <FormField
+                control={form.control}
+                name="returnFee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>退货费用 (¥)</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" placeholder="0.00" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* 售出信息 */}
             <FormField
               control={form.control}
-              name="launchDate"
+              name="soldDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-purple-500" />
-                    上架日期
-                  </FormLabel>
+                  <FormLabel>售出时间</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
+                            "w-full pl-3 text-left font-normal h-10",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -1021,93 +784,101 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
                 </FormItem>
               )}
             />
-          </div>
-        </div>
 
-        <Separator className="my-8" />
+            <FormField
+              control={form.control}
+              name="soldPrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>售出价格 (¥)</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="number" placeholder="0.00" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* 价格预测区域 */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-            <TrendingUp className="w-6 h-6 text-purple-600" />
-            <div>
-              <h3 className="text-lg font-semibold text-purple-900">🔮 智能定价</h3>
-              <p className="text-sm text-purple-700">AI智能分析商品价格趋势</p>
-            </div>
+            <FormField
+              control={form.control}
+              name="soldPlatform"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>售出平台</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择平台" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {LISTING_PLATFORM_OPTIONS.map((platform) => (
+                        <SelectItem key={platform.value} value={platform.value}>
+                          {platform.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
-          
-          <PricePrediction 
-            itemData={{
-              itemType: form.watch("itemType") || "",
-              itemBrand: form.watch("itemBrand") || "",
-              itemCondition: form.watch("itemCondition") || "",
-              purchasePrice: form.watch("purchasePrice") || "0",
-              itemSize: form.watch("itemSize") || "",
-              itemColor: form.watch("itemColor") || "",
-            }}
+
+          {/* 其他费用管理 */}
+          <OtherFeesManager
+            fees={form.watch("otherFees")}
+            onFeesChange={(fees) => form.setValue("otherFees", fees)}
           />
         </div>
 
-        <Separator className="my-8" />
-
-        {/* 商品图片区域 */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
-            <Camera className="w-6 h-6 text-orange-600" />
-            <div>
-              <h3 className="text-lg font-semibold text-orange-900">📸 商品图片</h3>
-              <p className="text-sm text-orange-700">上传商品照片，最多支持10张</p>
-            </div>
-          </div>
-          
+        {/* 第三块：图片上传 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">图片上传</h3>
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onPhotoChange}
-                ref={fileInputRef}
-                className="hidden"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2"
-              >
-                <Camera className="w-4 h-4" />
-                {uploading ? "上传中..." : "选择图片"}
-              </Button>
-              {photoUrls.length > 0 && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <span className="text-lg">📷</span>
-                  {photoUrls.length} 张图片
-                </Badge>
-              )}
+            <div>
+              <Label htmlFor="image-upload" className="block mb-2">
+                上传商品图片
+              </Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  id="image-upload"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+                  className="max-w-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById("image-upload")?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  选择图片
+                </Button>
+              </div>
             </div>
-            
-            {photoUrls.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {photoUrls.map((url, index) => (
+
+            {/* 图片预览 */}
+            {form.watch("photos").length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {form.watch("photos").map((photo, index) => (
                   <div key={index} className="relative group">
                     <img
-                      src={url}
+                      src={photo}
                       alt={`商品图片 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 group-hover:border-blue-300 transition-colors"
+                      className="w-full h-32 object-cover rounded-lg"
                     />
                     <Button
                       type="button"
-                      variant="destructive"
                       size="sm"
+                      variant="destructive"
                       className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        setPhotoUrls(photoUrls.filter((_, i) => i !== index));
-                        form.setValue("photos", form.getValues("photos")?.filter((_, i) => i !== index) || []);
-                      }}
+                      onClick={() => removeImage(index)}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <X className="w-3 h-3" />
                     </Button>
                   </div>
                 ))}
@@ -1116,49 +887,60 @@ export function TransactionForm({ existingData = null, onSuccess }: { existingDa
           </div>
         </div>
 
-        {/* 操作按钮区域 */}
-        <div className="flex justify-end gap-4 pt-6 border-t">
-          {existingData && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button type="button" variant="destructive" className="flex items-center gap-2">
-                  <Trash2 className="w-4 h-4" />
-                  删除商品
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    确认删除
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    此操作无法撤销。这将永久删除该商品及其所有相关数据。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                    删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <Button type="submit" className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-            {existingData ? (
+        {/* 第四块：收益计算 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">收益计算</h3>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <div className="text-gray-600">总成本</div>
+                <div className="font-semibold text-lg">
+                  ¥{(() => {
+                    const purchasePrice = parseFloat(form.watch("purchasePrice") || "0");
+                    const domesticShipping = parseFloat(form.watch("domesticShipping") || "0");
+                    const internationalShipping = parseFloat(form.watch("internationalShipping") || "0");
+                    const otherFeesTotal = form.watch("otherFees").reduce((sum, fee) => sum + parseFloat(fee.amount || "0"), 0);
+                    return (purchasePrice + domesticShipping + internationalShipping + otherFeesTotal).toFixed(2);
+                  })()}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-600">建议售价</div>
+                <div className="font-semibold text-lg text-blue-600">
+                  ¥{pricePrediction?.pricing?.suggestedPrice?.toFixed(2) || "0.00"}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-600">预计利润</div>
+                <div className="font-semibold text-lg text-green-600">
+                  ¥{pricePrediction?.pricing?.profitAmount?.toFixed(2) || "0.00"}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-600">利润率</div>
+                <div className="font-semibold text-lg text-green-600">
+                  {pricePrediction?.pricing?.profitMargin?.toFixed(1) || "0"}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
               <>
-                <Edit className="w-4 h-4" />
-                更新商品
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                保存中...
               </>
             ) : (
               <>
-                <Plus className="w-4 h-4" />
-                添加商品
+                <Save className="w-4 h-4 mr-2" />
+                {existingData ? "更新商品" : "添加商品"}
               </>
             )}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
     </Form>
   );
@@ -1168,35 +950,24 @@ export default function TransactionModal({ existingData = null }: { existingData
   const [open, setOpen] = React.useState(false);
 
   const handleSuccess = () => {
-    // 关闭对话框
     setOpen(false);
-    // 刷新页面数据
     window.location.reload();
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2">
-          {existingData ? (
-            <>
-              <Edit className="w-4 h-4" />
-              修改商品
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              添加商品
-            </>
-          )}
+        <Button variant="outline" className="w-full">
+          <Plus className="w-4 h-4 mr-2" />
+          {existingData ? "编辑商品" : "添加新商品"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5" />
-            {existingData ? "编辑商品信息" : "添加新商品"}
-          </DialogTitle>
+          <DialogTitle>{existingData ? "编辑商品" : "添加新商品"}</DialogTitle>
+          <DialogDescription>
+            {existingData ? "修改商品信息" : "填写商品信息并添加到数据库"}
+          </DialogDescription>
         </DialogHeader>
         <TransactionForm existingData={existingData} onSuccess={handleSuccess} />
       </DialogContent>
