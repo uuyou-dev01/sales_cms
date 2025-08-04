@@ -37,6 +37,11 @@ interface Item {
   itemCondition?: string;
   itemColor?: string;
   itemRemarks?: string;
+  itemNumber?: string;
+  itemMfgDate?: string;
+  photos?: string[];
+  position?: string;
+  warehousePositionId?: string;
   transactions?: Array<{
     purchaseDate: string;
     purchasePrice: string;
@@ -44,6 +49,23 @@ interface Item {
     itemNetProfit?: string;
     itemGrossProfit?: string;
     purchasePlatform?: string;
+    domesticShipping?: string;
+    internationalShipping?: string;
+    domesticTrackingNumber?: string;
+    internationalTrackingNumber?: string;
+    launchDate?: string;
+    soldDate?: string;
+    soldPlatform?: string;
+    soldPriceCurrency?: string;
+    soldPriceExchangeRate?: string;
+    storageDuration?: string;
+    shipping?: string;
+    transactionStatues?: string;
+    purchasePriceCurrency?: string;
+    purchasePriceExchangeRate?: string;
+    listingPlatforms?: string[];
+    isReturn?: boolean;
+    otherFees?: any[];
   }>;
 }
 
@@ -56,48 +78,47 @@ const convertItemToFormData = (item: Item) => {
     itemType: item.itemType || "",
     itemName: item.itemName,
     itemBrand: item.itemBrand || "",
-    itemNumber: "",
-    domesticShipping: "0",
-    internationalShipping: "0",
+    itemNumber: item.itemNumber || "",
+    domesticShipping: transaction?.domesticShipping || "0",
+    internationalShipping: transaction?.internationalShipping || "0",
     itemSize: item.itemSize || "",
     itemCondition: item.itemCondition || "",
     purchasePrice: transaction?.purchasePrice || "0",
     purchaseDate: transaction?.purchaseDate ? new Date(transaction.purchaseDate) : new Date(),
     itemStatus: item.itemStatus,
     purchasePlatform: transaction?.purchasePlatform || "",
-    domesticTrackingNumber: "",
-    itemMfgDate: "",
+    domesticTrackingNumber: transaction?.domesticTrackingNumber || "",
+    internationalTrackingNumber: transaction?.internationalTrackingNumber || "",
+    itemMfgDate: item.itemMfgDate || "",
     itemColor: item.itemColor || "",
     
     // 交易信息
-    launchDate: null,
-    storageDuration: "0",
-    warehousePositionId: "",
-    listingPlatforms: [],
-    isReturn: false,
-    returnFee: "0",
+    launchDate: transaction?.launchDate ? new Date(transaction.launchDate) : null,
+    storageDuration: transaction?.storageDuration || "0",
+    warehousePositionId: item.warehousePositionId || "",
+    listingPlatforms: transaction?.listingPlatforms || [],
+    isReturn: transaction?.isReturn || false,
     
     // 售出信息
-    soldDate: null,
+    soldDate: transaction?.soldDate ? new Date(transaction.soldDate) : null,
     soldPrice: transaction?.soldPrice || "0",
-    soldPlatform: "",
-    soldPriceCurrency: "CNY",
-    soldPriceExchangeRate: "1",
+    soldPlatform: transaction?.soldPlatform || "",
+    soldPriceCurrency: transaction?.soldPriceCurrency || "JPY",
+    soldPriceExchangeRate: transaction?.soldPriceExchangeRate || "0.05",
     
     // 图片和其他
-    photos: [],
-    otherFees: [],
+    photos: item.photos || [],
+    otherFees: transaction?.otherFees || [],
     
     // 其他字段（保持兼容性）
     itemRemarks: item.itemRemarks || "",
-    shipping: "0",
-    transactionStatues: item.itemStatus,
-    purchaseAmount: transaction?.purchasePrice || "0",
-    purchasePriceCurrency: "CNY",
-    purchasePriceExchangeRate: "1",
+    shipping: transaction?.shipping || "0",
+    transactionStatues: transaction?.transactionStatues || item.itemStatus,
+    purchasePriceCurrency: transaction?.purchasePriceCurrency || "CNY",
+    purchasePriceExchangeRate: transaction?.purchasePriceExchangeRate || "1",
     itemGrossProfit: transaction?.itemGrossProfit || "0",
     itemNetProfit: transaction?.itemNetProfit || "0",
-    position: "",
+    position: item.position || "",
   };
 };
 
@@ -114,6 +135,8 @@ export default function SalesPage() {
   const [refreshFlag, setRefreshFlag] = React.useState(0);
   const [editItem, setEditItem] = React.useState<Item | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState("");
   const [dateSort, setDateSort] = React.useState<"asc" | "desc" | null>(null);
   const [durationSort, setDurationSort] = React.useState<"asc" | "desc" | null>(null);
   const [priceSort, setPriceSort] = React.useState<"asc" | "desc" | null>(null);
@@ -239,6 +262,33 @@ export default function SalesPage() {
 
   return (
     <>
+      {/* 成功消息提示 */}
+      {showSuccessMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-5 h-5 bg-green-400 rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">
+                ✅ {successMessage}
+              </p>
+            </div>
+            <div className="ml-auto">
+              <button
+                onClick={() => setShowSuccessMessage(false)}
+                className="text-green-400 hover:text-green-600"
+              >
+                <span className="sr-only">关闭</span>
+                <div className="w-4 h-4">×</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 页面标题和描述 */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">商品管理</h1>
@@ -573,18 +623,15 @@ export default function SalesPage() {
                         <DropdownMenuItem onClick={() => setPlatformFilter("淘宝")}>
                           淘宝
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setPlatformFilter("京东")}>
-                          京东
-                        </DropdownMenuItem>
+                        
                         <DropdownMenuItem onClick={() => setPlatformFilter("闲鱼")}>
                           闲鱼
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setPlatformFilter("转转")}>
-                          转转
+                        <DropdownMenuItem onClick={() => setPlatformFilter("闲鱼")}>
+                          95分
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setPlatformFilter("拼多多")}>
-                          拼多多
-                        </DropdownMenuItem>
+                        
+                        
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -741,6 +788,15 @@ export default function SalesPage() {
                 setEditDialogOpen(false);
                 setEditItem(null);
                 setRefreshFlag(prev => prev + 1);
+                
+                // 显示成功消息
+                setSuccessMessage("商品信息已成功更新！");
+                setShowSuccessMessage(true);
+                
+                // 3秒后隐藏成功消息
+                setTimeout(() => {
+                  setShowSuccessMessage(false);
+                }, 1500);
               }}
             />
           )}

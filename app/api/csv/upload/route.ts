@@ -61,7 +61,6 @@ export async function POST(req: Request) {
             transactionStatues: record.transactionStatues || "pending",
             purchaseDate: new Date(record.purchaseDate),
             soldDate: record.soldDate ? new Date(record.soldDate) : null,
-            purchaseAmount: record.purchaseAmount || "0",
             launchDate: record.launchDate ? new Date(record.launchDate) : null,
             purchasePlatform: record.purchasePlatform || "",
             soldPlatform: record.soldPlatform || "",
@@ -74,7 +73,6 @@ export async function POST(req: Request) {
             itemGrossProfit: record.itemGrossProfit || "0",
             itemNetProfit: record.itemNetProfit || "0",
             isReturn: record.isReturn === "yes",
-            returnFee: record.returnFee || "0",
             storageDuration: "0",
           },
         });

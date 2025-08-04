@@ -6,8 +6,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // 生成唯一的itemId
-    const itemId = `ITEM_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // 使用表单中的itemId，如果没有则生成新的
+    const itemId = body.itemId || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // 处理其他费用数据
     const otherFees = body.otherFees || [];
@@ -17,16 +17,16 @@ export async function POST(req: Request) {
       const item = await tx.item.create({
         data: {
           itemId,
-          itemName: body.itemName,
+          itemName: body.itemName || "",
           itemMfgDate: body.itemMfgDate || "",
-          itemNumber: body.itemNumber,
-          itemType: body.itemType,
-          itemBrand: body.itemBrand,
-          itemCondition: body.itemCondition,
+          itemNumber: body.itemNumber || "",
+          itemType: body.itemType || "",
+          itemBrand: body.itemBrand || "",
+          itemCondition: body.itemCondition || "",
           itemRemarks: body.itemRemarks || "",
-          itemColor: body.itemColor,
-          itemStatus: body.itemStatus,
-          itemSize: body.itemSize,
+          itemColor: body.itemColor || "",
+          itemStatus: body.itemStatus || "",
+          itemSize: body.itemSize || "",
           photos: body.photos || [],
           position: body.position || null,
           warehousePositionId: body.warehousePositionId || null,
@@ -38,29 +38,28 @@ export async function POST(req: Request) {
         data: {
           itemId,
           shipping: body.shipping || "",
-          domesticShipping: body.domesticShipping || "0",
-          internationalShipping: body.internationalShipping || "0",
+          domesticShipping: String(body.domesticShipping || "0"),
+          internationalShipping: String(body.internationalShipping || "0"),
           domesticTrackingNumber: body.domesticTrackingNumber || null,
           internationalTrackingNumber: body.internationalTrackingNumber || null,
-          transactionStatues: body.transactionStatues,
+          transactionStatues: body.transactionStatues || "",
           purchaseDate: new Date(body.purchaseDate),
           soldDate: body.soldDate ? new Date(body.soldDate) : null,
           launchDate: body.launchDate ? new Date(body.launchDate) : null,
-          purchasePlatform: body.purchasePlatform,
+          purchasePlatform: body.purchasePlatform || "",
           soldPlatform: body.soldPlatform || "",
           listingPlatforms: body.listingPlatforms || [],
           otherFees: otherFees.length > 0 ? otherFees : null,
-          purchasePrice: body.purchasePrice || "0",
+          purchasePrice: String(body.purchasePrice || "0"),
           purchasePriceCurrency: body.purchasePriceCurrency || "CNY",
-          purchasePriceExchangeRate: body.purchasePriceExchangeRate || "1",
-          soldPrice: body.soldPrice || "0",
+          purchasePriceExchangeRate: String(body.purchasePriceExchangeRate || "1"),
+          soldPrice: String(body.soldPrice || "0"),
           soldPriceCurrency: body.soldPriceCurrency || "CNY",
-          soldPriceExchangeRate: body.soldPriceExchangeRate || "1",
-          itemGrossProfit: body.itemGrossProfit || "0",
-          itemNetProfit: body.itemNetProfit || "0",
+          soldPriceExchangeRate: String(body.soldPriceExchangeRate || "1"),
+          itemGrossProfit: String(body.itemGrossProfit || "0"),
+          itemNetProfit: String(body.itemNetProfit || "0"),
           isReturn: body.isReturn || false,
-          returnFee: body.returnFee || "0",
-          storageDuration: body.storageDuration || "0",
+          storageDuration: String(body.storageDuration || "0"),
         },
       });
 

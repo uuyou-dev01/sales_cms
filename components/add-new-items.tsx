@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Plus, Upload, X, Save } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Upload, X, Save, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,7 +13,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -46,43 +45,13 @@ import { useToast } from "@/hooks/use-toast";
 import { WarehouseSelector } from "@/components/warehouse-selector";
 import { PricePredictionPanel } from "@/components/price-prediction-panel";
 import { OtherFeesManager } from "@/components/other-fees-manager";
+import { PrintLabel } from "@/components/print-label";
 import { STATUS_OPTIONS, LISTING_PLATFORM_OPTIONS, CURRENCY_OPTIONS } from "@/lib/constants";
+import { useReactToPrint } from "react-to-print";
 
-// 价格预测数据接口
-interface PredictionData {
-  costBreakdown: {
-    purchasePrice: number;
-    domesticShipping: number;
-    internationalShipping: number;
-    totalCost: number;
-    japanShippingFee: number;
-    platformFeeRate: number;
-    totalCostWithFees: number;
-  };
-  pricing: {
-    suggestedPrice: number;
-    profitRate: number;
-    targetPlatform: string;
-    profitAmount: number;
-    profitMargin: number;
-  };
-  similarSales: {
-    totalSales: number;
-    averagePrice: number;
-    minPrice: number;
-    maxPrice: number;
-    recentSales: Array<{
-      price: string;
-      date: string;
-      platform: string;
-      itemName: string;
-      size: string;
-      condition: string;
-    }>;
-  } | null;
-}
 
-// 表单数据接口
+
+  // 表单数据接口
 interface FormData {
   // 基本信息
   itemId: string;
@@ -99,6 +68,7 @@ interface FormData {
   itemStatus: string;
   purchasePlatform: string;
   domesticTrackingNumber: string;
+  internationalTrackingNumber: string;
   itemMfgDate: string;
   itemColor: string;
   
@@ -130,7 +100,6 @@ interface FormData {
   itemRemarks: string;
   shipping: string;
   transactionStatues: string;
-  purchaseAmount: string;
   purchasePriceCurrency: string;
   purchasePriceExchangeRate: string;
   itemGrossProfit: string;
@@ -155,6 +124,7 @@ const formSchema = z.object({
   itemStatus: z.string().min(1, "请选择商品状态"),
   purchasePlatform: z.string().min(1, "请选择购入平台"),
   domesticTrackingNumber: z.string().optional(),
+  internationalTrackingNumber: z.string().optional(),
   itemMfgDate: z.string().optional(),
   itemColor: z.string().optional(),
   
@@ -178,6 +148,7 @@ const formSchema = z.object({
     id: z.string(),
     type: z.string(),
     amount: z.string(),
+    currency: z.string(),
     description: z.string(),
   })).default([]),
   
@@ -185,7 +156,6 @@ const formSchema = z.object({
   itemRemarks: z.string().optional(),
   shipping: z.string().default(""),
   transactionStatues: z.string().default("未上架"),
-  purchaseAmount: z.string().default("0"),
   purchasePriceCurrency: z.string().default("CNY"),
   purchasePriceExchangeRate: z.string().default("1"),
   itemGrossProfit: z.string().default("0"),
@@ -217,10 +187,9 @@ const CONDITION_OPTIONS = [
 const PURCHASE_PLATFORMS = [
   { value: "闲鱼", label: "闲鱼" },
   { value: "95分", label: "95分" },
-  { value: "转转", label: "转转" },
   { value: "淘宝", label: "淘宝" },
-  { value: "拼多多", label: "拼多多" },
   { value: "京东", label: "京东" },
+  { value: "微信转账", label: "微信转账" },
   { value: "其他", label: "其他" },
 ];
 
@@ -232,12 +201,15 @@ interface TransactionFormProps {
 export function TransactionForm({ existingData, onSuccess }: TransactionFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [pricePrediction, setPricePrediction] = React.useState<PredictionData | null>(null);
+  const [isSuccess, setIsSuccess] = React.useState(false);
+  
+  // 打印相关
+  const printRef = React.useRef<HTMLDivElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: existingData || {
-      itemId: `ITEM_${Date.now()}`,
+      itemId: `${Date.now()}`,
       itemType: "鞋子",
       itemName: "",
       itemBrand: "Nike",
@@ -251,6 +223,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       itemStatus: "在途（国内）",
       purchasePlatform: "95分",
       domesticTrackingNumber: "",
+      internationalTrackingNumber: "",
       itemMfgDate: "",
       itemColor: "",
       launchDate: null,
@@ -268,7 +241,6 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       itemRemarks: "",
       shipping: "",
       transactionStatues: "未上架",
-      purchaseAmount: "0",
       purchasePriceCurrency: "CNY",
       purchasePriceExchangeRate: "1",
       itemGrossProfit: "0",
@@ -277,9 +249,49 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
     },
   });
 
+  // 打印功能 - 在form初始化之后定义
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: `商品标签_${form.watch("itemId")}`,
+    onBeforeGetContent: () => {
+      if (!form.watch("itemId") || !form.watch("itemName")) {
+        toast({
+          title: "打印失败",
+          description: "请先填写商品ID和品名",
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    onPrintError: (error) => {
+      console.error("打印失败:", error);
+      toast({
+        title: "打印失败",
+        description: "请重试",
+        variant: "destructive",
+      });
+    }
+  });
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
+      // 添加调试日志
+      console.log("表单提交数据:", {
+        itemId: data.itemId,
+        itemNumber: data.itemNumber,
+        domesticShipping: data.domesticShipping,
+        internationalShipping: data.internationalShipping,
+        domesticTrackingNumber: data.domesticTrackingNumber,
+        internationalTrackingNumber: data.internationalTrackingNumber,
+        itemMfgDate: data.itemMfgDate,
+        launchDate: data.launchDate,
+        soldDate: data.soldDate,
+        soldPriceCurrency: data.soldPriceCurrency,
+        soldPriceExchangeRate: data.soldPriceExchangeRate,
+        soldPlatform: data.soldPlatform,
+      });
+
       // 自动计算在库时间
       if (data.purchaseDate && data.soldDate) {
         const days = Math.ceil((data.soldDate.getTime() - data.purchaseDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -316,11 +328,21 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       });
 
       if (response.ok) {
+        // 设置成功状态
+        setIsSuccess(true);
+        
+        // 显示成功提示
         toast({
-          title: existingData ? "更新成功" : "添加成功",
-          description: existingData ? "商品信息已更新" : "新商品已添加到数据库",
+          title: existingData ? "✅ 更新成功" : "✅ 添加成功",
+          description: existingData ? "商品信息已成功更新到数据库" : "新商品已成功添加到数据库",
+          duration: 3000, // 显示3秒
         });
-        onSuccess();
+        
+        // 延迟关闭对话框，让用户看到成功提示
+        setTimeout(() => {
+          setIsSuccess(false);
+          onSuccess();
+        }, 1500);
       } else {
         const error = await response.json();
         throw new Error(error.error || "操作失败");
@@ -370,6 +392,27 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* 成功提示 */}
+        {isSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-5 h-5 bg-green-400 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">
+                  {existingData ? "✅ 商品更新成功" : "✅ 商品添加成功"}
+                </p>
+                <p className="text-sm text-green-700 mt-1">
+                  {existingData ? "商品信息已成功更新到数据库" : "新商品已成功添加到数据库"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* 第一块：基本信息 */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold border-b pb-2">基本信息</h3>
@@ -646,6 +689,20 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
 
             <FormField
               control={form.control}
+              name="internationalTrackingNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>国际发货单号</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="输入国际发货单号" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="itemMfgDate"
               render={({ field }) => (
                 <FormItem>
@@ -695,7 +752,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
             domesticShipping={form.watch("domesticShipping")}
             internationalShipping={form.watch("internationalShipping")}
             itemNumber={form.watch("itemNumber")}
-            onPredictionChange={setPricePrediction}
+            onPredictionChange={() => {}}
           />
         </div>
 
@@ -1193,21 +1250,74 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
           </div>
         </div>
 
-        <DialogFooter>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                保存中...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                {existingData ? "更新商品" : "添加商品"}
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+        {/* 操作栏 - 固定在底部 */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 mt-6">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              {/* 打印按钮 */}
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={handlePrint}
+                disabled={!existingData || !form.watch("itemId") || !form.watch("itemName")}
+                title={!existingData ? "打印功能仅在编辑现有商品时可用" : "打印商品标签"}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                打印标签
+              </Button>
+              {!existingData && (
+                <div className="text-xs text-gray-500 flex items-center">
+                  (仅编辑时可用)
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              {/* 保存按钮 */}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || isSuccess}
+                className={isSuccess ? "bg-green-600 hover:bg-green-700" : ""}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    保存中...
+                  </>
+                ) : isSuccess ? (
+                  <>
+                    <div className="w-4 h-4 mr-2">✅</div>
+                    {existingData ? "更新成功" : "添加成功"}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {existingData ? "更新商品" : "添加商品"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* 隐藏的打印内容 */}
+        <div style={{ display: 'none' }}>
+          <PrintLabel
+            ref={printRef}
+            itemId={form.watch("itemId") || ""}
+            itemName={form.watch("itemName") || ""}
+            itemCondition={form.watch("itemCondition") || ""}
+            itemSize={form.watch("itemSize") || ""}
+            itemBrand={form.watch("itemBrand") || ""}
+            itemNumber={form.watch("itemNumber") || ""}
+            purchasePrice={form.watch("purchasePrice") || ""}
+            itemColor={form.watch("itemColor") || ""}
+            itemType={form.watch("itemType") || ""}
+            itemMfgDate={form.watch("itemMfgDate") || ""}
+            purchaseDate={form.watch("purchaseDate") ? format(form.watch("purchaseDate"), "yyyy-MM-dd") : ""}
+            itemStatus={form.watch("itemStatus") || ""}
+          />
+        </div>
       </form>
     </Form>
   );

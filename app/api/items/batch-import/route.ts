@@ -162,29 +162,64 @@ export async function POST(req: Request) {
             },
           });
 
+          // 处理其他费用
+          let otherFees = null;
+          if (record.otherFees) {
+            try {
+              // 解析其他费用格式：类型:金额:货币:描述
+              const fees = record.otherFees.split(',').map((fee: string) => {
+                const [type, amount, currency, description] = fee.split(':');
+                return {
+                  id: Math.random().toString(36).substr(2, 9),
+                  type: type || '',
+                  amount: amount || '0',
+                  currency: currency || 'CNY',
+                  description: description || '',
+                };
+              });
+              otherFees = fees;
+            } catch (error) {
+              console.warn('解析其他费用失败:', error);
+            }
+          }
+
+          // 处理上架平台列表
+          let listingPlatforms = [];
+          if (record.listingPlatforms) {
+            try {
+              listingPlatforms = record.listingPlatforms.split(',').map((p: string) => p.trim());
+            } catch (error) {
+              console.warn('解析上架平台失败:', error);
+            }
+          }
+
           // 创建交易记录
           await tx.transaction.create({
             data: {
               itemId: record.itemId,
               shipping: record.shipping || "0",
-              transactionStatues: record.transactionStatues || record.itemStatus || "pending",
+              domesticShipping: String(record.domesticShipping || "0"),
+              internationalShipping: String(record.internationalShipping || "0"),
+              domesticTrackingNumber: record.domesticTrackingNumber || null,
+              internationalTrackingNumber: record.internationalTrackingNumber || null,
+              transactionStatues: record.transactionStatues || record.itemStatus || "未上架",
               purchaseDate: record.purchaseDate ? new Date(record.purchaseDate) : new Date(),
               soldDate: record.soldDate ? new Date(record.soldDate) : null,
-              purchaseAmount: record.purchaseAmount || record.purchasePrice || "0",
               launchDate: record.launchDate ? new Date(record.launchDate) : null,
               purchasePlatform: record.purchasePlatform || "",
               soldPlatform: record.soldPlatform || "",
-              purchasePrice: record.purchasePrice || record.purchaseAmount || "0",
+              listingPlatforms,
+              otherFees,
+              purchasePrice: String(record.purchasePrice || "0"),
               purchasePriceCurrency: record.purchasePriceCurrency || "CNY",
-              purchasePriceExchangeRate: record.purchasePriceExchangeRate || "1",
-              soldPrice: record.soldPrice || "0",
-              soldPriceCurrency: record.soldPriceCurrency || "CNY",
-              soldPriceExchangeRate: record.soldPriceExchangeRate || "1",
-              itemGrossProfit: record.itemGrossProfit || "0",
-              itemNetProfit: record.itemNetProfit || "0",
+              purchasePriceExchangeRate: String(record.purchasePriceExchangeRate || "1"),
+              soldPrice: String(record.soldPrice || "0"),
+              soldPriceCurrency: record.soldPriceCurrency || "JPY",
+              soldPriceExchangeRate: String(record.soldPriceExchangeRate || "0.05"),
+              itemGrossProfit: String(record.itemGrossProfit || "0"),
+              itemNetProfit: String(record.itemNetProfit || "0"),
               isReturn: record.isReturn === "yes" || record.isReturn === "true",
-              returnFee: record.returnFee || "0",
-              storageDuration: record.storageDuration || "0",
+              storageDuration: String(record.storageDuration || "0"),
             },
           });
 

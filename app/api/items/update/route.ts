@@ -7,6 +7,26 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const { itemId, ...data } = body;
 
+    // 添加调试日志
+    console.log("更新商品数据:", {
+      itemId,
+      itemNumber: data.itemNumber,
+      domesticShipping: data.domesticShipping,
+      internationalShipping: data.internationalShipping,
+      domesticTrackingNumber: data.domesticTrackingNumber,
+      internationalTrackingNumber: data.internationalTrackingNumber,
+      itemMfgDate: data.itemMfgDate,
+      launchDate: data.launchDate,
+      soldDate: data.soldDate,
+      soldPriceCurrency: data.soldPriceCurrency,
+      soldPriceExchangeRate: data.soldPriceExchangeRate,
+      soldPlatform: data.soldPlatform,
+    });
+
+    // 添加更详细的调试信息
+    console.log("所有更新字段:", Object.keys(data));
+    console.log("字段值详情:", data);
+
     // 处理其他费用数据
     const otherFees = data.otherFees || [];
 
@@ -25,16 +45,16 @@ export async function PUT(req: Request) {
       const updatedItem = await tx.item.update({
         where: { itemId },
         data: {
-          itemName: data.itemName,
+          itemName: data.itemName || "",
           itemMfgDate: data.itemMfgDate || "",
-          itemNumber: data.itemNumber,
-          itemType: data.itemType,
-          itemBrand: data.itemBrand,
-          itemCondition: data.itemCondition,
+          itemNumber: data.itemNumber || "",
+          itemType: data.itemType || "",
+          itemBrand: data.itemBrand || "",
+          itemCondition: data.itemCondition || "",
           itemRemarks: data.itemRemarks || "",
-          itemColor: data.itemColor,
-          itemStatus: data.itemStatus,
-          itemSize: data.itemSize,
+          itemColor: data.itemColor || "",
+          itemStatus: data.itemStatus || "",
+          itemSize: data.itemSize || "",
           photos: data.photos || [],
           position: data.position || null,
           warehousePositionId: data.warehousePositionId || null,
@@ -51,29 +71,28 @@ export async function PUT(req: Request) {
           where: { id: existingTransaction.id },
           data: {
             shipping: data.shipping || "",
-            domesticShipping: data.domesticShipping || "0",
-            internationalShipping: data.internationalShipping || "0",
+            domesticShipping: String(data.domesticShipping || "0"),
+            internationalShipping: String(data.internationalShipping || "0"),
             domesticTrackingNumber: data.domesticTrackingNumber || null,
             internationalTrackingNumber: data.internationalTrackingNumber || null,
-            transactionStatues: data.transactionStatues || existingTransaction.transactionStatues,
+            transactionStatues: data.transactionStatues || "",
             purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : existingTransaction.purchaseDate,
             soldDate: data.soldDate ? new Date(data.soldDate) : null,
             launchDate: data.launchDate ? new Date(data.launchDate) : null,
-            purchasePlatform: data.purchasePlatform,
+            purchasePlatform: data.purchasePlatform || "",
             soldPlatform: data.soldPlatform || "",
             listingPlatforms: data.listingPlatforms || [],
             otherFees: otherFees.length > 0 ? otherFees : null,
-            purchasePrice: data.purchasePrice || "0",
+            purchasePrice: String(data.purchasePrice || "0"),
             purchasePriceCurrency: data.purchasePriceCurrency || "CNY",
-            purchasePriceExchangeRate: data.purchasePriceExchangeRate || "1",
-            soldPrice: data.soldPrice || "0",
+            purchasePriceExchangeRate: String(data.purchasePriceExchangeRate || "1"),
+            soldPrice: String(data.soldPrice || "0"),
             soldPriceCurrency: data.soldPriceCurrency || "CNY",
-            soldPriceExchangeRate: data.soldPriceExchangeRate || "1",
-            itemGrossProfit: data.itemGrossProfit || "0",
-            itemNetProfit: data.itemNetProfit || "0",
+            soldPriceExchangeRate: String(data.soldPriceExchangeRate || "1"),
+            itemGrossProfit: String(data.itemGrossProfit || "0"),
+            itemNetProfit: String(data.itemNetProfit || "0"),
             isReturn: data.isReturn || false,
-            returnFee: data.returnFee || "0",
-            storageDuration: data.storageDuration || "0",
+            storageDuration: String(data.storageDuration || "0"),
           },
         });
       }

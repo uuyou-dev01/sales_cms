@@ -121,9 +121,9 @@ export default function BatchImport() {
   };
 
   const downloadTemplate = () => {
-    const csvContent = `itemId,itemName,itemNumber,itemType,itemBrand,itemCondition,itemSize,itemColor,itemRemarks,itemStatus,itemMfgDate,position,warehouseName,warehouseDescription,positionName,positionCapacity,photos,purchaseDate,purchaseAmount,purchasePrice,purchasePlatform,purchasePriceCurrency,purchasePriceExchangeRate,launchDate,soldDate,soldPrice,soldPlatform,soldPriceCurrency,soldPriceExchangeRate,itemGrossProfit,itemNetProfit,shipping,transactionStatues,isReturn,returnFee,storageDuration
-ITEM001,示例商品1,SN001,电子产品,品牌A,全新,M,黑色,备注信息,pending,2024-01-01,位置描述,家庭仓,家庭仓库,A区,30,photo1.jpg,photo2.jpg,2024-01-01,1000.00,1000.00,淘宝,CNY,1,2024-01-05,2024-01-15,1200.00,闲鱼,CNY,1,200.00,180.00,20.00,pending,no,0.00,0
-ITEM002,示例商品2,SN002,服装,品牌B,九成新,L,白色,无备注,pending,2024-01-01,位置描述,办公间,办公室仓库,B区,20,photo3.jpg,2024-01-02,500.00,500.00,京东,CNY,1,2024-01-03,2024-01-20,600.00,转转,CNY,1,100.00,90.00,10.00,pending,no,0.00,0`;
+    const csvContent = `itemId,itemName,itemNumber,itemType,itemBrand,itemCondition,itemSize,itemColor,itemRemarks,itemStatus,itemMfgDate,position,warehouseName,warehouseDescription,positionName,positionCapacity,photos,purchaseDate,purchasePrice,purchasePlatform,purchasePriceCurrency,purchasePriceExchangeRate,launchDate,soldDate,soldPrice,soldPlatform,soldPriceCurrency,soldPriceExchangeRate,itemGrossProfit,itemNetProfit,shipping,transactionStatues,isReturn,storageDuration,domesticShipping,internationalShipping,domesticTrackingNumber,internationalTrackingNumber,listingPlatforms,otherFees
+ITEM001,示例商品1,SN001,鞋子,Nike,全新,42,黑色,备注信息,在途（国内）,2023年春季,位置描述,家庭仓,家庭仓库,A区,30,photo1.jpg,photo2.jpg,2024-01-01,1000.00,95分,CNY,1,2024-01-05,2024-01-15,1200.00,Mercari,JPY,0.05,200.00,180.00,20.00,未上架,no,0,10,100,SF123456,DHL789012,"Mercari,闲鱼","包装费:5:CNY:包装材料费用"
+ITEM002,示例商品2,SN002,服装,Adidas,九成新,L,白色,无备注,在途（国内）,2023年春季,位置描述,办公间,办公室仓库,B区,20,photo3.jpg,2024-01-02,500.00,闲鱼,CNY,1,2024-01-03,2024-01-20,600.00,闲鱼,JPY,0.05,100.00,90.00,10.00,未上架,no,0,15,120,SF789012,DHL123456,"闲鱼","包装费:8:CNY:包装材料费用"`;
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -162,6 +162,10 @@ ITEM002,示例商品2,SN002,服装,品牌B,九成新,L,白色,无备注,pending,
                 <p><strong>仓库功能：</strong>如果填写warehouseName和positionName，系统会自动创建仓库和仓位</p>
                 <p><strong>照片上传：</strong>photos字段支持多个照片，用逗号分隔</p>
                 <p><strong>日期格式：</strong>YYYY-MM-DD（如：2024-01-01）</p>
+                <p><strong>上架平台：</strong>listingPlatforms字段用逗号分隔多个平台（如：Mercari,闲鱼）</p>
+                <p><strong>其他费用：</strong>otherFees字段格式为类型:金额:货币:描述，多个费用用逗号分隔</p>
+                <p><strong>运费字段：</strong>domesticShipping（国内运费）、internationalShipping（国际运费）</p>
+                <p><strong>单号字段：</strong>domesticTrackingNumber（国内单号）、internationalTrackingNumber（国际单号）</p>
               </div>
             </AlertDescription>
           </Alert>

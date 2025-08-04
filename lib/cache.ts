@@ -10,15 +10,6 @@ export const getCachedItems = unstable_cache(
       include: {
         transactions: {
           orderBy: { purchaseDate: 'desc' },
-          select: {
-            purchaseDate: true,
-            purchasePrice: true,
-            soldPrice: true,
-            itemNetProfit: true,
-            itemGrossProfit: true,
-            purchasePlatform: true,
-            transactionStatues: true,
-          },
         },
         warehousePosition: {
           include: {

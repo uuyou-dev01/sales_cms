@@ -54,7 +54,6 @@ model Transaction {
   itemGrossProfit             String
   itemNetProfit               String
   isReturn                    Boolean
-  returnFee                   String
   storageDuration             String
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
