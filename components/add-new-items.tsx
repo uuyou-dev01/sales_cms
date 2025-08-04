@@ -46,6 +46,7 @@ import { WarehouseSelector } from "@/components/warehouse-selector";
 import { PricePredictionPanel } from "@/components/price-prediction-panel";
 import { OtherFeesManager } from "@/components/other-fees-manager";
 import { PrintLabel } from "@/components/print-label";
+
 import { STATUS_OPTIONS, LISTING_PLATFORM_OPTIONS, CURRENCY_OPTIONS } from "@/lib/constants";
 import { useReactToPrint } from "react-to-print";
 
@@ -203,8 +204,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSuccess, setIsSuccess] = React.useState(false);
   
-  // 打印相关
-  const printRef = React.useRef<HTMLDivElement>(null);
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -249,21 +249,21 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
     },
   });
 
+  // 打印相关
+  const printRef = React.useRef<HTMLDivElement>(null);
+
   // 打印功能 - 在form初始化之后定义
+  // @ts-ignore - react-to-print 类型定义问题
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `商品标签_${form.watch("itemId")}`,
-    onBeforeGetContent: () => {
-      if (!form.watch("itemId") || !form.watch("itemName")) {
-        toast({
-          title: "打印失败",
-          description: "请先填写商品ID和品名",
-          variant: "destructive",
-        });
-        return false;
+    content: () => {
+      console.log("打印内容引用:", printRef.current);
+      if (!printRef.current) {
+        console.error("打印内容引用为空");
+        return null;
       }
+      return printRef.current;
     },
-    onPrintError: (error) => {
+    onPrintError: (error: unknown) => {
       console.error("打印失败:", error);
       toast({
         title: "打印失败",
@@ -335,7 +335,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
         toast({
           title: existingData ? "✅ 更新成功" : "✅ 添加成功",
           description: existingData ? "商品信息已成功更新到数据库" : "新商品已成功添加到数据库",
-          duration: 3000, // 显示3秒
+          duration: 1500, // 显示3秒
         });
         
         // 延迟关闭对话框，让用户看到成功提示
@@ -1258,8 +1258,18 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
               <Button 
                 type="button" 
                 variant="outline"
-                onClick={handlePrint}
-                disabled={!existingData || !form.watch("itemId") || !form.watch("itemName")}
+                onClick={() => {
+                  if (!form.watch("itemId") || !form.watch("itemName")) {
+                    toast({
+                      title: "打印失败",
+                      description: "请先填写商品ID和品名",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  handlePrint();
+                }}
+                disabled={!existingData}
                 title={!existingData ? "打印功能仅在编辑现有商品时可用" : "打印商品标签"}
               >
                 <Printer className="w-4 h-4 mr-2" />
@@ -1301,7 +1311,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
         </div>
 
         {/* 隐藏的打印内容 */}
-        <div style={{ display: 'none' }}>
+        <div style={{ position: "absolute", left: "-9999px", top: "-9999px", visibility: "hidden" }}>
           <PrintLabel
             ref={printRef}
             itemId={form.watch("itemId") || ""}
@@ -1318,6 +1328,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
             itemStatus={form.watch("itemStatus") || ""}
           />
         </div>
+
       </form>
     </Form>
   );
