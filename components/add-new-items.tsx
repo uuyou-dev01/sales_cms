@@ -253,24 +253,34 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
   const printRef = React.useRef<HTMLDivElement>(null);
 
   // 打印功能 - 在form初始化之后定义
-  // @ts-ignore - react-to-print 类型定义问题
   const handlePrint = useReactToPrint({
-    content: () => {
-      console.log("打印内容引用:", printRef.current);
-      if (!printRef.current) {
-        console.error("打印内容引用为空");
-        return null;
+    contentRef: printRef,
+    onBeforeGetContent: () => {
+      // 在打印前进行验证
+      if (!form.watch("itemId") || !form.watch("itemName")) {
+        toast({
+          title: "打印失败",
+          description: "请先填写商品ID和品名",
+          variant: "destructive",
+        });
+        return false;
       }
-      return printRef.current;
+      
+      // 等待一小段时间确保二维码完全加载
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(true);
+        }, 1000);
+      });
     },
     onPrintError: (error: unknown) => {
       console.error("打印失败:", error);
       toast({
         title: "打印失败",
-        description: "请重试",
+        description: "打印过程中出现错误",
         variant: "destructive",
       });
-    }
+    },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -1318,14 +1328,12 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
             itemName={form.watch("itemName") || ""}
             itemCondition={form.watch("itemCondition") || ""}
             itemSize={form.watch("itemSize") || ""}
-            itemBrand={form.watch("itemBrand") || ""}
             itemNumber={form.watch("itemNumber") || ""}
             purchasePrice={form.watch("purchasePrice") || ""}
-            itemColor={form.watch("itemColor") || ""}
+            purchasePlatform={form.watch("purchasePlatform") || ""}
             itemType={form.watch("itemType") || ""}
-            itemMfgDate={form.watch("itemMfgDate") || ""}
+            itemRemarks={form.watch("itemRemarks") || ""}
             purchaseDate={form.watch("purchaseDate") ? format(form.watch("purchaseDate"), "yyyy-MM-dd") : ""}
-            itemStatus={form.watch("itemStatus") || ""}
           />
         </div>
 
