@@ -53,11 +53,11 @@ export async function PUT(req: Request) {
           itemCondition: data.itemCondition || "",
           itemRemarks: data.itemRemarks || "",
           itemColor: data.itemColor || "",
-          itemStatus: data.itemStatus || "",
           itemSize: data.itemSize || "",
           photos: data.photos || [],
           position: data.position || null,
           warehousePositionId: data.warehousePositionId || null,
+          accessories: data.accessories || null,
         },
       });
 
@@ -75,7 +75,7 @@ export async function PUT(req: Request) {
             internationalShipping: String(data.internationalShipping || "0"),
             domesticTrackingNumber: data.domesticTrackingNumber || null,
             internationalTrackingNumber: data.internationalTrackingNumber || null,
-            transactionStatues: data.transactionStatues || "",
+                    orderStatus: data.orderStatus || existingTransaction.orderStatus || "在途（国内）",
             purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : existingTransaction.purchaseDate,
             soldDate: data.soldDate ? new Date(data.soldDate) : null,
             launchDate: data.launchDate ? new Date(data.launchDate) : null,

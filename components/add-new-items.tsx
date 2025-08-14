@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -66,7 +67,7 @@ interface FormData {
   itemCondition: string;
   purchasePrice: string;
   purchaseDate: Date;
-  itemStatus: string;
+  orderStatus: string;
   purchasePlatform: string;
   domesticTrackingNumber: string;
   internationalTrackingNumber: string;
@@ -96,11 +97,11 @@ interface FormData {
     currency: string;
     description: string;
   }>;
+  accessories: string;
   
   // 其他字段（保持兼容性）
   itemRemarks: string;
   shipping: string;
-  transactionStatues: string;
   purchasePriceCurrency: string;
   purchasePriceExchangeRate: string;
   itemGrossProfit: string;
@@ -122,7 +123,7 @@ const formSchema = z.object({
   itemCondition: z.string().min(1, "请选择成色"),
   purchasePrice: z.string().min(1, "请输入购入价格"),
   purchaseDate: z.date().min(new Date("2025-01-01"), "请输入购入日期"),
-  itemStatus: z.string().min(1, "请选择商品状态"),
+  orderStatus: z.string().min(1, "请选择订单状态"),
   purchasePlatform: z.string().min(1, "请选择购入平台"),
   domesticTrackingNumber: z.string().optional(),
   internationalTrackingNumber: z.string().optional(),
@@ -152,6 +153,7 @@ const formSchema = z.object({
     currency: z.string(),
     description: z.string(),
   })).default([]),
+  accessories: z.string().optional(),
   
   // 其他字段
   itemRemarks: z.string().optional(),
@@ -220,7 +222,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       itemCondition: "全新",
       purchasePrice: "",
       purchaseDate: new Date(),
-      itemStatus: "在途（国内）",
+      orderStatus: "在途（国内）",
       purchasePlatform: "95分",
       domesticTrackingNumber: "",
       internationalTrackingNumber: "",
@@ -238,9 +240,10 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       soldPriceExchangeRate: "0.05",
       photos: [],
       otherFees: [],
+      accessories: "",
       itemRemarks: "",
       shipping: "",
-      transactionStatues: "未上架",
+      orderStatus: "在途（国内）",
       purchasePriceCurrency: "CNY",
       purchasePriceExchangeRate: "1",
       itemGrossProfit: "0",
@@ -635,10 +638,10 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
 
             <FormField
               control={form.control}
-              name="itemStatus"
+              name="orderStatus"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>商品状态</FormLabel>
+                  <FormLabel>订单状态</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -1023,7 +1026,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                   size="sm"
                   onClick={() => document.getElementById("image-upload")?.click()}
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  <span className="text-lg">{EmojiIcons.Upload}</span>
                   选择图片
                 </Button>
               </div>
@@ -1046,7 +1049,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                       className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => removeImage(index)}
                     >
-                      <X className="w-3 h-3" />
+                      <span className="text-lg">{EmojiIcons.Close}</span>
                     </Button>
                   </div>
                 ))}
@@ -1282,7 +1285,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                 disabled={!existingData}
                 title={!existingData ? "打印功能仅在编辑现有商品时可用" : "打印商品标签"}
               >
-                <Printer className="w-4 h-4 mr-2" />
+                <span className="text-lg">{EmojiIcons.Print}</span>
                 打印标签
               </Button>
               {!existingData && (
@@ -1311,7 +1314,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4 mr-2" />
+                    <span className="text-lg">{EmojiIcons.Save}</span>
                     {existingData ? "更新商品" : "添加商品"}
                   </>
                 )}
@@ -1353,8 +1356,8 @@ export default function TransactionModal({ existingData = null }: { existingData
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
-          <Plus className="w-4 h-4 mr-2" />
+        <Button variant="outline" size="sm" className="gap-1 px-3">
+          <span className="text-lg">{EmojiIcons.Plus}</span>
           {existingData ? "编辑商品" : "添加新商品"}
         </Button>
       </DialogTrigger>

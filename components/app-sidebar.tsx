@@ -84,59 +84,87 @@ function useSidebarData() {
       fetch("/api/warehouses").then(res => res.json())
     ])
     .then(([monthsData, warehousesData]) => {
-      let updatedNavMain = [...data.navMain];
+      console.log("获取到的月份数据:", monthsData);
+      console.log("获取到的仓库数据:", warehousesData);
+      
+      setData(prev => {
+        let updatedNavMain = [...prev.navMain];
 
-      // 处理月份数据
-      if (monthsData.months && Array.isArray(monthsData.months)) {
-        const monthItems = monthsData.months.map((month: string) => {
-          const [year, monthNum] = month.split("-");
-          const monthNames = [
-            "一月", "二月", "三月", "四月", "五月", "六月",
-            "七月", "八月", "九月", "十月", "十一月", "十二月"
-          ];
-          return {
-            title: `${year}年${monthNames[parseInt(monthNum) - 1]}`,
-            url: `/sales/${month}`,
-          };
-        });
-
-        updatedNavMain = updatedNavMain.map(item => 
-          item.title === "销售管理" 
-            ? { ...item, items: monthItems }
-            : item
-        );
-      }
-
-      // 处理仓库数据
-      if (warehousesData && Array.isArray(warehousesData)) {
-        const warehouseItems = warehousesData.map((warehouse: { name: string; positions: Array<{ name: string; capacity: number; used: number }> }) => {
-          const totalCapacity = warehouse.positions.reduce((sum: number, pos: { capacity: number; used: number }) => sum + pos.capacity, 0);
-          const totalUsed = warehouse.positions.reduce((sum: number, pos: { capacity: number; used: number }) => sum + pos.used, 0);
+        // 处理月份数据
+        if (monthsData && Array.isArray(monthsData)) {
+          const monthItems = monthsData
+            .map((month: string) => {
+              try {
+                const [year, monthNum] = month.split("-");
+                const yearNum = parseInt(year);
+                const monthNumInt = parseInt(monthNum);
+                
+                // 验证月份数据
+                if (isNaN(yearNum) || isNaN(monthNumInt) || monthNumInt < 1 || monthNumInt > 12) {
+                  console.warn("无效的月份格式:", month);
+                  return null;
+                }
+                
+                const monthNames = [
+                  "一月", "二月", "三月", "四月", "五月", "六月",
+                  "七月", "八月", "九月", "十月", "十一月", "十二月"
+                ];
+                
+                return {
+                  title: `${yearNum}年${monthNames[monthNumInt - 1]}`,
+                  url: `/sales/${month}`,
+                };
+              } catch (error) {
+                console.error("处理月份数据失败:", month, error);
+                return null;
+              }
+            })
+            .filter((item): item is { title: string; url: string } => item !== null); // 类型安全的过滤
           
-          // 为每个仓库创建仓位子项目
-          const positionItems = warehouse.positions.map((position: { name: string; capacity: number; used: number }) => ({
-            title: `${position.name} (${position.used}/${position.capacity})`,
-            url: `/warehouse`,
-          }));
+          console.log("生成的月份子项目:", monthItems);
+
+          updatedNavMain = updatedNavMain.map(item => 
+            item.title === "销售管理" 
+              ? { ...item, items: monthItems }
+              : item
+          );
+        }
+
+        // 处理仓库数据
+        if (warehousesData && Array.isArray(warehousesData)) {
+          const warehouseItems = warehousesData.map((warehouse: { name: string; positions: Array<{ name: string; capacity: number; used: number }> }) => {
+            const totalCapacity = warehouse.positions.reduce((sum: number, pos: { capacity: number; used: number }) => sum + pos.capacity, 0);
+            const totalUsed = warehouse.positions.reduce((sum: number, pos: { capacity: number; used: number }) => sum + pos.used, 0);
+            
+            // 为每个仓库创建仓位子项目
+            const positionItems = warehouse.positions.map((position: { name: string; capacity: number; used: number }) => ({
+              title: `${position.name} (${position.used}/${position.capacity})`,
+              url: `/warehouse`,
+            }));
+            
+            return {
+              title: `${warehouse.name} (${totalUsed}/${totalCapacity})`,
+              url: `/warehouse`,
+              items: positionItems,
+            };
+          });
           
-          return {
-            title: `${warehouse.name} (${totalUsed}/${totalCapacity})`,
-            url: `/warehouse`,
-            items: positionItems,
-          };
-        });
+          console.log("生成的仓库子项目:", warehouseItems);
 
-        updatedNavMain = updatedNavMain.map(item => 
-          item.title === "仓库管理" 
-            ? { ...item, items: warehouseItems }
-            : item
-        );
-      }
+          updatedNavMain = updatedNavMain.map(item => 
+            item.title === "仓库管理" 
+              ? { ...item, items: warehouseItems }
+              : item
+          );
+        }
+        
+        console.log("更新后的导航数据:", updatedNavMain);
 
-      setData(prev => ({
-        ...prev,
-        navMain: updatedNavMain,
-      }));
+        return {
+          ...prev,
+          navMain: updatedNavMain,
+        };
+      });
     })
     .catch((error) => {
       console.error("获取侧边栏数据失败:", error);
@@ -148,6 +176,9 @@ function useSidebarData() {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const data = useSidebarData();
+  
+  console.log("AppSidebar 渲染数据:", data);
+  console.log("导航主项目:", data.navMain);
   
   return (
     <Sidebar collapsible="icon" {...props}>

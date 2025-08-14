@@ -81,15 +81,15 @@ export default function TestDialogPage() {
                     }}
                     className="gap-2"
                   >
-                    <Eye className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Eye}</span>
                     查看详情
                   </Button>
                   <Button variant="outline" size="sm" className="gap-2">
-                    <Edit className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Edit}</span>
                     编辑
                   </Button>
                   <Button variant="outline" size="sm" className="gap-2">
-                    <Trash2 className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Trash2}</span>
                     删除
                   </Button>
                 </div>
@@ -138,7 +138,7 @@ export default function TestDialogPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" />
+              <span className="text-lg">{EmojiIcons.Package}</span>
               商品详情
             </DialogTitle>
           </DialogHeader>

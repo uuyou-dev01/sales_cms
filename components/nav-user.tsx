@@ -1,6 +1,7 @@
 "use client"
 
 import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from "lucide-react"
+import { EmojiIcons } from "@/components/emoji-icons";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -42,7 +43,7 @@ export function NavUser({
                 <span className="truncate font-semibold">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <span className="text-lg">{EmojiIcons.ChevronsUpDown}</span>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -66,28 +67,28 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <Sparkles />
+                <span className="text-lg">{EmojiIcons.Sparkles}</span>
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <BadgeCheck />
+                <span className="text-lg">{EmojiIcons.BadgeCheck}</span>
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <CreditCard />
+                <span className="text-lg">{EmojiIcons.CreditCard}</span>
                 Billing
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Bell />
+                <span className="text-lg">{EmojiIcons.Bell}</span>
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <LogOut />
+              <span className="text-lg">{EmojiIcons.LogOut}</span>
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -102,7 +103,7 @@ export function WarehouseStats() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Warehouse className="w-5 h-5" />
+            <span className="text-lg">{EmojiIcons.Warehouse}</span>
             仓库统计
           </CardTitle>
         </CardHeader>
@@ -121,7 +122,7 @@ export function WarehouseStats() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Warehouse className="w-5 h-5 text-blue-600" />
+            <span className="text-lg">{EmojiIcons.Warehouse}</span>
             仓库统计
           </CardTitle>
           <Button 
@@ -131,14 +132,14 @@ export function WarehouseStats() {
             className="gap-2"
           >
             管理仓库
-            <ArrowRight className="w-4 h-4" />
+            <span className="text-lg">{EmojiIcons.ArrowRight}</span>
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         {warehouses.length === 0 ? (
           <div className="text-center py-6">
-            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <span className="text-lg">{EmojiIcons.Building2}</span>
             <p className="text-sm text-gray-600 mb-3">暂无仓库数据</p>
             <Button size="sm" onClick={handleGoToWarehouse}>
               创建第一个仓库
@@ -161,7 +162,7 @@ export function WarehouseStats() {
             {/* 使用率 */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-gray-600" />
+                <span className="text-lg">{EmojiIcons.TrendingUp}</span>
                 <span className="text-sm font-medium">总体使用率</span>
               </div>
               <Badge className={getUsageColor(totalStats.usageRate)}>
@@ -188,7 +189,7 @@ export function WarehouseStats() {
             {/* 警告信息 */}
             {totalStats.fullPositions > 0 && (
               <div className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-yellow-600" />
+                <span className="text-lg">{EmojiIcons.AlertCircle}</span>
                 <span className="text-sm text-yellow-800">
                   {totalStats.fullPositions} 个仓位已满
                 </span>
@@ -206,7 +207,7 @@ export function WarehouseStats() {
                 return (
                   <div key={warehouse.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-gray-500" />
+                      <span className="text-lg">{EmojiIcons.Building2}</span>
                       <span className="text-sm font-medium">{warehouse.name}</span>
                     </div>
                     <Badge variant="outline" className={`text-xs ${getUsageColor(usage)}`}>

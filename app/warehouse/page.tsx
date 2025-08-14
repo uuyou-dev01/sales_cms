@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,7 +117,7 @@ export default function WarehousePage() {
             onClick={() => router.back()}
             className="gap-2"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <span className="text-lg">{EmojiIcons.ArrowLeft}</span>
             返回
           </Button>
           <h1 className="text-3xl font-bold text-gray-900">仓库管理</h1>
@@ -134,7 +135,7 @@ export default function WarehousePage() {
                 <p className="text-2xl font-bold text-gray-900">{totalStats.totalWarehouses}</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
-                <Building2 className="w-6 h-6 text-blue-600" />
+                <span className="text-lg">{EmojiIcons.Building2}</span>
               </div>
             </div>
           </CardContent>
@@ -148,7 +149,7 @@ export default function WarehousePage() {
                 <p className="text-2xl font-bold text-gray-900">{totalStats.totalPositions}</p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
-                <MapPin className="w-6 h-6 text-green-600" />
+                <span className="text-lg">{EmojiIcons.MapPin}</span>
               </div>
             </div>
           </CardContent>
@@ -162,7 +163,7 @@ export default function WarehousePage() {
                 <p className="text-2xl font-bold text-gray-900">{totalStats.totalCapacity}</p>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
-                <Package className="w-6 h-6 text-purple-600" />
+                <span className="text-lg">{EmojiIcons.Package}</span>
               </div>
             </div>
           </CardContent>
@@ -176,7 +177,7 @@ export default function WarehousePage() {
                 <p className="text-2xl font-bold text-gray-900">{totalStats.usageRate}%</p>
               </div>
               <div className="p-3 bg-orange-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-orange-600" />
+                <span className="text-lg">{EmojiIcons.TrendingUp}</span>
               </div>
             </div>
           </CardContent>
@@ -186,11 +187,11 @@ export default function WarehousePage() {
       {/* 操作按钮 */}
       <div className="flex gap-3 mb-6">
         <Button className="gap-2">
-          <Plus className="w-4 h-4" />
+          <span className="text-lg">{EmojiIcons.Plus}</span>
           新建仓库
         </Button>
         <Button variant="outline" className="gap-2">
-          <Settings className="w-4 h-4" />
+          <span className="text-lg">{EmojiIcons.Settings}</span>
           仓库设置
         </Button>
       </div>
@@ -201,11 +202,11 @@ export default function WarehousePage() {
           <Card>
             <CardContent className="p-12">
               <div className="text-center">
-                <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <span className="text-lg">{EmojiIcons.Building2}</span>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">暂无仓库</h3>
                 <p className="text-gray-600 mb-4">创建您的第一个仓库来开始管理库存</p>
                 <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
+                  <span className="text-lg">{EmojiIcons.Plus}</span>
                   创建仓库
                 </Button>
               </div>
@@ -224,7 +225,7 @@ export default function WarehousePage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-blue-600" />
+                        <span className="text-lg">{EmojiIcons.Building2}</span>
                         {warehouse.name}
                       </CardTitle>
                       {warehouse.description && (
@@ -275,7 +276,7 @@ export default function WarehousePage() {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium">{position.name}</span>
                               {isFull && (
-                                <AlertCircle className="w-4 h-4 text-red-500" />
+                                <span className="text-lg">{EmojiIcons.AlertCircle}</span>
                               )}
                             </div>
                             <div className="flex items-center justify-between text-sm">
@@ -302,7 +303,7 @@ export default function WarehousePage() {
                   {/* 警告信息 */}
                   {fullPositions > 0 && (
                     <div className="mt-4 flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      <span className="text-lg">{EmojiIcons.AlertCircle}</span>
                       <span className="text-sm text-yellow-800">
                         {fullPositions} 个仓位已满，请及时处理
                       </span>

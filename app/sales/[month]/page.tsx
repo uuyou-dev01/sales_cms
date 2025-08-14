@@ -1,13 +1,15 @@
 "use client";
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
-import TransactionModal from "@/components/add-new-items";
+import TransactionModal, { TransactionForm } from "@/components/add-new-items";
 import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/safe-dialog";
-import { ChevronUp, ChevronDown, MoreHorizontal, Search, Filter, Upload, Download, TrendingUp, Package, DollarSign, ShoppingCart, Clock, Calendar, Tag, Eye, Edit, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
+// 图标已替换为Emoji
+import { ExportDialog } from "@/components/export-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -39,12 +41,17 @@ interface Item {
   itemId: string;
   itemName: string;
   itemSize: string;
-  itemStatus: string;
   itemBrand?: string;
   itemType?: string;
   itemCondition?: string;
   itemColor?: string;
   itemRemarks?: string;
+  itemNumber?: string;
+  itemMfgDate?: string;
+  photos?: string[];
+  position?: string;
+  warehousePositionId?: string;
+  accessories?: string;
   transactions?: Array<{
     purchaseDate: string;
     purchasePrice: string;
@@ -52,6 +59,30 @@ interface Item {
     itemNetProfit?: string;
     itemGrossProfit?: string;
     purchasePlatform?: string;
+    domesticShipping?: string;
+    internationalShipping?: string;
+    domesticTrackingNumber?: string;
+    internationalTrackingNumber?: string;
+    launchDate?: string;
+    soldDate?: string;
+    soldPlatform?: string;
+    soldPriceCurrency?: string;
+    soldPriceExchangeRate?: string;
+    storageDuration?: string;
+    shipping?: string;
+  
+    orderStatus?: string;
+    purchasePriceCurrency?: string;
+    purchasePriceExchangeRate?: string;
+    listingPlatforms?: string[];
+    isReturn?: boolean;
+    otherFees?: Array<{
+      id: string;
+      type: string;
+      amount: string;
+      currency: string;
+      description: string;
+    }>;
   }>;
 }
 
@@ -64,48 +95,48 @@ const convertItemToFormData = (item: Item) => {
     itemType: item.itemType || "",
     itemName: item.itemName,
     itemBrand: item.itemBrand || "",
-    itemNumber: "",
-    domesticShipping: "0",
-    internationalShipping: "0",
+    itemNumber: item.itemNumber || "",
+    domesticShipping: transaction?.domesticShipping || "0",
+    internationalShipping: transaction?.internationalShipping || "0",
     itemSize: item.itemSize || "",
     itemCondition: item.itemCondition || "",
     purchasePrice: transaction?.purchasePrice || "0",
     purchaseDate: transaction?.purchaseDate ? new Date(transaction.purchaseDate) : new Date(),
-    itemStatus: item.itemStatus,
+    orderStatus: transaction?.orderStatus || "在途（国内）",
     purchasePlatform: transaction?.purchasePlatform || "",
-    domesticTrackingNumber: "",
-    itemMfgDate: "",
+    domesticTrackingNumber: transaction?.domesticTrackingNumber || "",
+    internationalTrackingNumber: transaction?.internationalTrackingNumber || "",
+    itemMfgDate: item.itemMfgDate || "",
     itemColor: item.itemColor || "",
     
     // 交易信息
-    launchDate: null,
-    storageDuration: "0",
-    warehousePositionId: "",
-    listingPlatforms: [],
-    isReturn: false,
-    returnFee: "0",
+    launchDate: transaction?.launchDate ? new Date(transaction.launchDate) : null,
+    storageDuration: transaction?.storageDuration || "0",
+    warehousePositionId: item.warehousePositionId || "",
+    listingPlatforms: transaction?.listingPlatforms || [],
+    isReturn: transaction?.isReturn || false,
     
     // 售出信息
-    soldDate: null,
+    soldDate: transaction?.soldDate ? new Date(transaction.soldDate) : null,
     soldPrice: transaction?.soldPrice || "0",
-    soldPlatform: "",
-    soldPriceCurrency: "CNY",
-    soldPriceExchangeRate: "1",
+    soldPlatform: transaction?.soldPlatform || "",
+    soldPriceCurrency: transaction?.soldPriceCurrency || "CNY",
+    soldPriceExchangeRate: transaction?.soldPriceExchangeRate || "1",
     
     // 图片和其他
-    photos: [],
-    otherFees: [],
+    photos: item.photos || [],
+    otherFees: transaction?.otherFees || [],
+    accessories: item.accessories || "",
     
     // 其他字段（保持兼容性）
     itemRemarks: item.itemRemarks || "",
-    shipping: "0",
-    transactionStatues: item.itemStatus,
-    purchaseAmount: transaction?.purchasePrice || "0",
-    purchasePriceCurrency: "CNY",
-    purchasePriceExchangeRate: "1",
+    shipping: transaction?.shipping || "0",
+          orderStatus: transaction?.orderStatus || "在途（国内）",
+    purchasePriceCurrency: transaction?.purchasePriceCurrency || "CNY",
+    purchasePriceExchangeRate: transaction?.purchasePriceExchangeRate || "1",
     itemGrossProfit: transaction?.itemGrossProfit || "0",
     itemNetProfit: transaction?.itemNetProfit || "0",
-    position: "",
+    position: item.position || "",
   };
 };
 
@@ -120,6 +151,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
   const [refreshFlag, setRefreshFlag] = React.useState(0);
   const [editItem, setEditItem] = React.useState<Item | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
   const [dateSort, setDateSort] = React.useState<"asc" | "desc" | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [monthData, setMonthData] = React.useState<{ month: string } | null>(null);
@@ -133,23 +165,71 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
 
   // 根据月份计算开始和结束日期
   const getMonthDateRange = (monthStr: string) => {
-    const [year, month] = monthStr.split("-");
-    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const endDate = new Date(parseInt(year), parseInt(month), 0);
-    return {
-      start: startDate.toISOString().split('T')[0],
-      end: endDate.toISOString().split('T')[0]
-    };
+    try {
+      const [year, month] = monthStr.split("-");
+      const yearNum = parseInt(year);
+      const monthNum = parseInt(month);
+      
+      // 验证年份和月份是否有效
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        console.error("无效的月份格式:", monthStr);
+        // 返回当前月份作为默认值
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        return {
+          start: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
+          end: `${currentYear}-${String(currentMonth).padStart(2, '0')}-${new Date(currentYear, currentMonth, 0).getDate()}`
+        };
+      }
+      
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0);
+      
+      // 验证日期对象是否有效
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error("无效的日期对象");
+      }
+      
+      return {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
+      };
+    } catch (error) {
+      console.error("计算月份日期范围失败:", error, "月份字符串:", monthStr);
+      // 返回当前月份作为默认值
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      return {
+        start: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
+        end: `${currentYear}-${String(currentMonth).padStart(2, '0')}-${new Date(currentYear, currentMonth, 0).getDate()}`
+      };
+    }
   };
 
   // 格式化月份显示
   const formatMonthDisplay = (monthStr: string) => {
-    const [year, month] = monthStr.split("-");
-    const monthNames = [
-      "一月", "二月", "三月", "四月", "五月", "六月",
-      "七月", "八月", "九月", "十月", "十一月", "十二月"
-    ];
-    return `${year}年${monthNames[parseInt(month) - 1]}`;
+    try {
+      const [year, month] = monthStr.split("-");
+      const yearNum = parseInt(year);
+      const monthNum = parseInt(month);
+      
+      // 验证年份和月份是否有效
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        console.error("无效的月份格式:", monthStr);
+        return "无效月份";
+      }
+      
+      const monthNames = [
+        "一月", "二月", "三月", "四月", "五月", "六月",
+        "七月", "八月", "九月", "十月", "十一月", "十二月"
+      ];
+      return `${yearNum}年${monthNames[monthNum - 1]}`;
+    } catch (error) {
+      console.error("格式化月份显示失败:", error, "月份字符串:", monthStr);
+      return "格式化失败";
+    }
   };
 
   React.useEffect(() => {
@@ -177,6 +257,44 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
       })
       .finally(() => setLoading(false));
   }, [page, pageSize, status, searchQuery, refreshFlag, monthData, toast]);
+
+  // 状态变更处理函数
+  const handleStatusChange = async (itemId: string, newStatus: string) => {
+    try {
+      const response = await fetch("/api/items/batch-update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemIds: [itemId],
+          status: newStatus
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("状态更新失败");
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "状态更新成功",
+          description: `商品状态已更新为：${newStatus}`,
+        });
+        
+        // 刷新数据
+        setRefreshFlag(prev => prev + 1);
+      } else {
+        throw new Error(result.error || "状态更新失败");
+      }
+    } catch (error) {
+      toast({
+        title: "状态更新失败",
+        description: error instanceof Error ? error.message : "未知错误",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDelete = async (itemId: string) => {
     if (!window.confirm("确定要删除该商品吗？")) return;
@@ -207,17 +325,58 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
     if (!monthData) return;
     
     const { start, end } = getMonthDateRange(monthData.month);
-    fetch(`/api/items/stats?start=${start}&end=${end}`)
+    
+    // 直接获取商品列表数据，然后计算该月份的统计数据
+    fetch(`/api/items/list?start=${start}&end=${end}&pageSize=1000`)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
-          console.error("获取统计数据失败:", data.error);
+          console.error("获取商品数据失败:", data.error);
         } else {
-          setStats(data);
+          // 计算该月份的统计数据
+          const monthlyItems = data.items || [];
+          
+          const monthlyPurchase = monthlyItems.reduce((sum: number, item: Item) => {
+            const transaction = item.transactions?.[0];
+            return sum + (transaction?.purchasePrice ? parseFloat(transaction.purchasePrice) : 0);
+          }, 0);
+          
+          const monthlySold = monthlyItems.reduce((sum: number, item: Item) => {
+            const transaction = item.transactions?.[0];
+            return sum + (transaction?.soldPrice ? parseFloat(transaction.soldPrice) : 0);
+          }, 0);
+          
+          const monthlySoldCount = monthlyItems.filter((item: Item) => 
+            item.transactions?.[0]?.soldPrice
+          ).length;
+          
+          const monthlyProfitRate = monthlySold > 0 && monthlyPurchase > 0 
+            ? (((monthlySold - monthlyPurchase) / monthlyPurchase) * 100).toFixed(2)
+            : "0.00";
+          
+          setStats({
+            monthlyPurchase,
+            monthlySold,
+            monthlyProfitRate,
+            monthlySoldCount,
+            isMonthlyView: true,
+          });
+          
+          console.log("月份统计数据:", {
+            month: monthData.month,
+            start,
+            end,
+            monthlyPurchase,
+            monthlySold,
+            monthlyProfitRate,
+            monthlySoldCount,
+            itemCount: monthlyItems.length
+          });
         }
       })
       .catch((error) => {
         console.error("获取统计数据失败:", error);
+        // 出错时保持默认值
       });
   }, [monthData, refreshFlag]);
 
@@ -232,7 +391,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
         <div className="flex items-center gap-4 mb-4">
           <Link href="/sales">
             <Button variant="outline" size="sm" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
+              <span className="text-lg">{EmojiIcons.ArrowLeft}</span>
               返回全部
             </Button>
           </Link>
@@ -251,10 +410,10 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">本月购入金额</p>
-              <p className="text-2xl font-bold text-gray-900">¥{stats.monthlyPurchase.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">¥{(stats.monthlyPurchase || 0).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
-              <ShoppingCart className="w-6 h-6 text-blue-600" />
+              <span className="text-lg">{EmojiIcons.ShoppingCart}</span>
             </div>
           </div>
         </div>
@@ -263,10 +422,10 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">销售金额</p>
-              <p className="text-2xl font-bold text-gray-900">¥{stats.monthlySold.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">¥{(stats.monthlySold || 0).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-green-600" />
+              <span className="text-lg">{EmojiIcons.TrendingUp}</span>
             </div>
           </div>
         </div>
@@ -275,10 +434,10 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">月平均利润率</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.monthlyProfitRate}%</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.monthlyProfitRate || "0.00"}%</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-purple-600" />
+              <span className="text-lg">{EmojiIcons.DollarSign}</span>
             </div>
           </div>
         </div>
@@ -287,10 +446,10 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">月销售数量</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.monthlySoldCount}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.monthlySoldCount || 0}</p>
             </div>
             <div className="p-3 bg-orange-100 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-orange-600" />
+              <span className="text-lg">{EmojiIcons.TrendingUp}</span>
             </div>
           </div>
         </div>
@@ -303,15 +462,19 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
           <div className="flex flex-wrap gap-3">
             <TransactionModal />
             <Button variant="outline" className="gap-2">
-              <Upload className="w-4 h-4" />
+              <span className="text-lg">{EmojiIcons.Upload}</span>
               批量导入
             </Button>
-            <Button variant="outline" className="gap-2">
-              <Download className="w-4 h-4" />
+            <Button 
+              variant="outline" 
+              onClick={() => setExportDialogOpen(true)}
+              className="gap-2"
+            >
+              <span className="text-lg">{EmojiIcons.Download}</span>
               导出数据
             </Button>
             <Button variant="outline" onClick={() => setRefreshFlag((f) => f + 1)} className="gap-2">
-              <RefreshCw className="w-4 h-4" />
+              <span className="text-lg">{EmojiIcons.RefreshCw}</span>
               刷新
             </Button>
           </div>
@@ -319,7 +482,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
           {/* 右侧筛选和搜索 */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <span className="text-lg">{EmojiIcons.Search}</span>
               <Input
                 placeholder="搜索商品..."
                 value={searchQuery}
@@ -331,7 +494,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
-                  <Filter className="w-4 h-4" />
+                  <span className="text-lg">{EmojiIcons.Filter}</span>
                   筛选
                 </Button>
               </DropdownMenuTrigger>
@@ -355,7 +518,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
 
         {/* 月份信息 */}
         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-          <Calendar className="w-4 h-4 text-gray-400" />
+          <span className="text-lg">{EmojiIcons.Calendar}</span>
           <span className="text-sm text-gray-600">
             当前查看：{formatMonthDisplay(monthData.month)} 
             ({getMonthDateRange(monthData.month).start} 至 {getMonthDateRange(monthData.month).end})
@@ -371,55 +534,55 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Package}</span>
                     商品信息
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Calendar}</span>
                     购入时间
                     <button
                       onClick={() => setDateSort(dateSort === "asc" ? "desc" : "asc")}
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {dateSort === "asc" ? (
-                        <ChevronUp className="w-4 h-4" />
+                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
                       ) : dateSort === "desc" ? (
-                        <ChevronDown className="w-4 h-4" />
+                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
                       ) : (
-                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
                       )}
                     </button>
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Clock}</span>
                     在库时长
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Tag}</span>
                     尺寸
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Eye}</span>
                     状态
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.DollarSign}</span>
                     购入价格
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.ShoppingCart}</span>
                     购入平台
                   </div>
                 </th>
@@ -433,7 +596,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-gray-500">
-                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      <span className="text-lg">{EmojiIcons.RefreshCw}</span>
                       加载中...
                     </div>
                   </td>
@@ -442,7 +605,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="text-gray-500">
-                      <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <span className="text-lg">{EmojiIcons.Package}</span>
                       <p className="text-lg font-medium">{formatMonthDisplay(monthData.month)}暂无商品数据</p>
                       <p className="text-sm">开始添加您的第一个商品吧</p>
                     </div>
@@ -468,7 +631,40 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">{item.itemSize}</td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={item.itemStatus} />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-2 hover:bg-gray-100 rounded px-2 py-1 transition-colors">
+                              <StatusBadge status={item.transactions?.[0]?.orderStatus || "在途（国内）"} />
+                              
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-40">
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "在途（国内）")}>
+                              在途（国内）
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "在途（日本）")}>
+                              在途（日本）
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "未上架")}>
+                              未上架
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "已上架")}>
+                              已上架
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "交易中")}>
+                              交易中
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "退货中")}>
+                              退货中
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "已完成")}>
+                              已完成
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(item.itemId, "已售出未结算")}>
+                              已售出未结算
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         ¥{t?.purchasePrice ? parseFloat(t.purchasePrice).toLocaleString() : "-"}
@@ -480,7 +676,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="text-lg">{EmojiIcons.MoreHorizontal}</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -488,14 +684,53 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
               setEditItem(item);
               setEditDialogOpen(true);
             }} className="gap-2">
-                              <Edit className="w-4 h-4" />
+                              <span className="text-lg">{EmojiIcons.Edit}</span>
                               编辑商品
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch("/api/items/copy", {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({ itemId: item.itemId }),
+                                  });
+
+                                  const result = await response.json();
+                                  
+                                  if (result.success) {
+                                    toast({
+                                      title: "复制成功",
+                                      description: `新商品ID: ${result.data.newItemId}`,
+                                    });
+                                    // 刷新数据
+                                    window.location.reload();
+                                  } else {
+                                    toast({
+                                      title: "复制失败",
+                                      description: result.error,
+                                      variant: "destructive",
+                                    });
+                                  }
+                                } catch {
+                                  toast({
+                                    title: "复制失败",
+                                    description: "网络错误",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              className="gap-2"
+                            >
+                              📋 Copy出品
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => handleDelete(item.itemId)}
                               className="text-red-600 gap-2"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <span className="text-lg">{EmojiIcons.Trash2}</span>
                               删除
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -525,23 +760,72 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
             上一页
           </Button>
           <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(5, Math.ceil(total / pageSize)) }, (_, i) => {
-              const pageNum = i + 1;
-              return (
-                <Button
-                  key={pageNum}
-                  variant={page === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPage(pageNum)}
-                  className="w-8 h-8 p-0"
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-            {Math.ceil(total / pageSize) > 5 && (
-              <span className="px-2 text-gray-500">...</span>
-            )}
+            {(() => {
+              const totalPages = Math.ceil(total / pageSize);
+              const maxVisiblePages = 7; // 最多显示7个页码
+              let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+              const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+              
+              // 调整起始页，确保显示足够的页码
+              if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+              }
+              
+              const pages = [];
+              
+              // 添加第一页
+              if (startPage > 1) {
+                pages.push(
+                  <Button
+                    key={1}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(1)}
+                    className="w-8 h-8 p-0"
+                  >
+                    1
+                  </Button>
+                );
+                if (startPage > 2) {
+                  pages.push(<span key="ellipsis1" className="px-2 text-gray-500">...</span>);
+                }
+              }
+              
+              // 添加中间页码
+              for (let i = startPage; i <= endPage; i++) {
+                pages.push(
+                  <Button
+                    key={i}
+                    variant={page === i ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setPage(i)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {i}
+                  </Button>
+                );
+              }
+              
+              // 添加最后一页
+              if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                  pages.push(<span key="ellipsis2" className="px-2 text-gray-500">...</span>);
+                }
+                pages.push(
+                  <Button
+                    key={totalPages}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(totalPages)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {totalPages}
+                  </Button>
+                );
+              }
+              
+              return pages;
+            })()}
           </div>
           <Button 
             variant="outline" 
@@ -561,20 +845,37 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
           setEditItem(null);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" />
+              <span className="text-lg">{EmojiIcons.Package}</span>
               编辑商品
             </DialogTitle>
           </DialogHeader>
           {editItem && (
-            <TransactionModal 
+            <TransactionForm 
               existingData={convertItemToFormData(editItem)} 
+              onSuccess={() => {
+                setEditDialogOpen(false);
+                setEditItem(null);
+                setRefreshFlag(prev => prev + 1);
+                
+                // 显示成功消息
+                toast({ 
+                  title: "商品信息已成功更新！",
+                  description: "商品信息已保存到数据库"
+                });
+              }}
             />
           )}
         </DialogContent>
       </SafeDialog>
+
+      {/* 导出数据对话框 */}
+      <ExportDialog 
+        open={exportDialogOpen} 
+        onOpenChange={setExportDialogOpen} 
+      />
     </>
   );
 } 

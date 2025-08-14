@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Building2, Package } from "lucide-react";
@@ -101,7 +102,7 @@ export function WarehouseSelector({
               warehouses.map((warehouse) => (
                 <SelectItem key={warehouse.id} value={warehouse.id}>
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
+                    <span className="text-lg">{EmojiIcons.Building2}</span>
                     {warehouse.name}
                     {warehouse.description && (
                       <span className="text-xs text-gray-500">
@@ -144,7 +145,7 @@ export function WarehouseSelector({
                     >
                       <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
+                          <span className="text-lg">{EmojiIcons.MapPin}</span>
                           {position.name}
                         </div>
                         <Badge 
@@ -167,7 +168,7 @@ export function WarehouseSelector({
         <div className="p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-blue-600" />
+              <span className="text-lg">{EmojiIcons.Package}</span>
               <span className="text-sm font-medium">
                 {selectedWarehouse?.name} - {selectedPosition.name}
               </span>

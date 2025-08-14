@@ -17,7 +17,6 @@ model Item {
   itemCondition       String
   itemRemarks         String
   itemColor           String
-  itemStatus          String
   itemSize            String
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
@@ -25,6 +24,7 @@ model Item {
   photos              String[]
   position            String?
   warehousePositionId String?
+  accessories         String?
   warehousePosition   WarehousePosition? @relation(fields: [warehousePositionId], references: [id])
   transactions        Transaction[]
 }
@@ -32,29 +32,29 @@ model Item {
 model Transaction {
   id                          String    @id @default(cuid())
   itemId                      String
-  shipping                    String
-  domesticShipping            String
-  internationalShipping       String
+  shipping                    String?
+  domesticShipping            String?
+  internationalShipping       String?
   domesticTrackingNumber      String?
   internationalTrackingNumber String?
-  transactionStatues          String
+  orderStatus                 String    @default("在途（国内）")
   purchaseDate                DateTime
   soldDate                    DateTime?
   launchDate                  DateTime?
   purchasePlatform            String
-  soldPlatform                String
+  soldPlatform                String?
   listingPlatforms            String[]
   otherFees                   Json?
   purchasePrice               String
   purchasePriceCurrency       String
   purchasePriceExchangeRate   String
-  soldPrice                   String
-  soldPriceCurrency           String
-  soldPriceExchangeRate       String
-  itemGrossProfit             String
-  itemNetProfit               String
-  isReturn                    Boolean
-  storageDuration             String
+  soldPrice                   String?
+  soldPriceCurrency           String?
+  soldPriceExchangeRate       String?
+  itemGrossProfit             String?
+  itemNetProfit               String?
+  isReturn                    Boolean?
+  storageDuration             String?
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
   item                        Item      @relation(fields: [itemId], references: [itemId])

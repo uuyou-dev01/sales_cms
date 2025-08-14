@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, TrendingUp, History } from "lucide-react";
@@ -103,7 +104,7 @@ export function PricePredictionPanel({
     return (
       <Card className="border-dashed border-2 border-gray-200">
         <CardContent className="p-6 text-center">
-          <Calculator className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+          <span className="text-lg">{EmojiIcons.Calculator}</span>
           <p className="text-sm text-gray-500">填写购入价格后自动显示价格预测</p>
         </CardContent>
       </Card>
@@ -116,7 +117,7 @@ export function PricePredictionPanel({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="w-4 h-4" />
+            <span className="text-lg">{EmojiIcons.TrendingUp}</span>
             价格预测
           </CardTitle>
         </CardHeader>

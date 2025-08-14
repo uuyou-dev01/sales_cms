@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +54,7 @@ export function OtherFeesManager({ fees, onFeesChange }: OtherFeesManagerProps) 
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4" />
+            <span className="text-lg">{EmojiIcons.DollarSign}</span>
             其他费用
           </div>
           <Button
@@ -63,7 +64,7 @@ export function OtherFeesManager({ fees, onFeesChange }: OtherFeesManagerProps) 
             onClick={addFee}
             className="h-7 px-2"
           >
-            <Plus className="w-3 h-3 mr-1" />
+            <span className="text-lg">{EmojiIcons.Plus}</span>
             添加费用
           </Button>
         </CardTitle>
@@ -91,7 +92,7 @@ export function OtherFeesManager({ fees, onFeesChange }: OtherFeesManagerProps) 
                     onClick={() => removeFee(fee.id)}
                     className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <span className="text-lg">{EmojiIcons.Trash2}</span>
                   </Button>
                 </div>
                 

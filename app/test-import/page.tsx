@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,10 +34,9 @@ export default function TestImportPage() {
   };
 
   const downloadSampleCSV = () => {
-    const csvContent = `itemId,itemName,itemType,itemBrand,itemCondition,itemSize,itemColor,itemRemarks,purchaseAmount,purchaseDate,purchasePlatform,soldPrice,soldDate,soldPlatform,itemGrossProfit,itemNetProfit,shipping,isReturn,returnFee
-ITEM001,示例商品1,电子产品,品牌A,全新,M,黑色,备注信息,1000.00,2024-01-01,淘宝,1200.00,2024-01-15,闲鱼,200.00,180.00,20.00,no,0.00
-ITEM002,示例商品2,服装,品牌B,九成新,L,白色,无备注,500.00,2024-01-02,京东,600.00,2024-01-20,转转,100.00,90.00,10.00,no,0.00
-ITEM003,示例商品3,家居用品,品牌C,全新,S,蓝色,测试商品,300.00,2024-01-03,拼多多,350.00,2024-01-25,闲鱼,50.00,45.00,5.00,no,0.00`;
+    const csvContent = `itemName,itemNumber,itemType,itemBrand,itemCondition,itemSize,itemColor,itemRemarks,itemStatus,itemMfgDate,position,warehouseName,warehouseDescription,positionName,positionCapacity,photos,purchaseDate,purchasePrice,purchasePlatform,purchasePriceCurrency,purchasePriceExchangeRate,launchDate,soldDate,soldPrice,soldPlatform,soldPriceCurrency,soldPriceExchangeRate,itemGrossProfit,itemNetProfit,shipping,transactionStatues,isReturn,storageDuration,domesticShipping,internationalShipping,domesticTrackingNumber,internationalTrackingNumber,listingPlatforms,otherFees
+示例商品1,SN001,鞋子,Nike,全新,42,黑色,测试备注,在途（国内）,2023年春季,位置描述,测试仓库,测试仓库描述,A区,30,test1.jpg;test2.jpg,2024-01-01,1000.00,95分,CNY,1,2024-01-05,2024-01-15,1200.00,Mercari,JPY,0.05,200.00,180.00,20.00,未上架,no,0,10,100,SF123456,DHL789012,"Mercari,闲鱼","包装费:5:CNY:包装材料费用"
+示例商品2,SN002,服装,Adidas,九成新,L,白色,无备注,在途（国内）,2023年春季,位置描述,测试仓库2,测试仓库2描述,B区,20,test3.jpg,2024-01-02,500.00,闲鱼,CNY,1,2024-01-03,2024-01-20,600.00,闲鱼,JPY,0.05,100.00,90.00,10.00,未上架,no,0,15,120,SF789012,DHL123456,"闲鱼","包装费:8:CNY:包装材料费用"`;
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -62,7 +62,7 @@ ITEM003,示例商品3,家居用品,品牌C,全新,S,蓝色,测试商品,300.00,2
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
+            <span className="text-lg">{EmojiIcons.Upload}</span>
             批量导入功能测试
           </CardTitle>
           <CardDescription>
@@ -73,16 +73,18 @@ ITEM003,示例商品3,家居用品,品牌C,全新,S,蓝色,测试商品,300.00,2
           <div className="flex items-center gap-4">
             <BatchImport />
             <Button variant="outline" onClick={downloadSampleCSV} className="gap-2">
-              <Download className="w-4 h-4" />
+              <span className="text-lg">{EmojiIcons.Download}</span>
               下载测试数据
             </Button>
           </div>
           <div className="text-sm text-gray-600">
             <p>• 支持CSV格式文件上传</p>
-            <p>• 自动验证文件格式和必需字段</p>
+            <p>• 自动验证文件格式和必需字段（itemName、itemType、itemBrand）</p>
+            <p>• 自动生成唯一商品ID</p>
             <p>• 实时显示导入进度</p>
             <p>• 详细的错误报告和成功统计</p>
-            <p>• 防止重复导入相同商品ID</p>
+            <p>• 支持仓库和仓位自动创建</p>
+            <p>• 照片字段使用分号(;)分隔</p>
           </div>
         </CardContent>
       </Card>
@@ -91,7 +93,7 @@ ITEM003,示例商品3,家居用品,品牌C,全新,S,蓝色,测试商品,300.00,2
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Search className="w-5 h-5" />
+            <span className="text-lg">{EmojiIcons.Search}</span>
             搜索功能测试
           </CardTitle>
           <CardDescription>
@@ -107,7 +109,7 @@ ITEM003,示例商品3,家居用品,品牌C,全新,S,蓝色,测试商品,300.00,2
               className="flex-1"
             />
             <Button onClick={handleSearch} disabled={loading} className="gap-2">
-              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {loading ? <span className="text-lg">{EmojiIcons.RefreshCw}</span> : <span className="text-lg">{EmojiIcons.Search}</span>}
               搜索
             </Button>
           </div>

@@ -23,7 +23,6 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
     itemNumber, 
     purchasePrice,
     purchasePlatform,
-    itemType,
     itemRemarks,
     purchaseDate
   }, ref) => {
@@ -85,7 +84,7 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
             <h2 style={{ 
               margin: 0, 
               fontSize: '12pt', 
-              fontWeight: 'bold',
+              fontWeight: '',
               lineHeight: '1.2'
             }}>
               {itemName || '商品名称'}
@@ -94,7 +93,7 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
               fontSize: '8pt', 
               color: 'black', 
               marginTop: '0.5mm',
-              fontWeight: 'bold'
+              fontWeight: ''
             }}>
               ID: {itemId || 'N/A'}
             </div>
@@ -117,31 +116,15 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
                 marginBottom: '0.5mm'
               }}>
                 <span className="label" style={{ 
-                  fontWeight: 'bold', 
                   marginRight: '1mm', 
                   minWidth: '8mm',
-                  fontSize: '6pt'
+                  fontSize: '8pt'
                 }}>型号:</span>
-                <span className="value" style={{ flex: 1, fontSize: '6pt' }}>
+                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
                   {itemNumber || 'N/A'}
                 </span>
               </div>
               
-              <div className="info-row" style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: '0.5mm'
-              }}>
-                <span className="label" style={{ 
-                  fontWeight: 'bold', 
-                  marginRight: '1mm', 
-                  minWidth: '8mm',
-                  fontSize: '6pt'
-                }}>类型:</span>
-                <span className="value" style={{ flex: 1, fontSize: '6pt' }}>
-                  {itemType || 'N/A'}
-                </span>
-              </div>
               
               <div className="info-row" style={{ 
                 display: 'flex', 
@@ -149,12 +132,11 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
                 marginBottom: '0.5mm'
               }}>
                 <span className="label" style={{ 
-                  fontWeight: 'bold', 
                   marginRight: '1mm', 
                   minWidth: '8mm',
-                  fontSize: '6pt'
+                  fontSize: '8pt'
                 }}>尺寸:</span>
-                <span className="value" style={{ flex: 1, fontSize: '6pt' }}>
+                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
                   {itemSize || 'N/A'}
                 </span>
               </div>
@@ -165,12 +147,11 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
                 marginBottom: '0.5mm'
               }}>
                 <span className="label" style={{ 
-                  fontWeight: 'bold', 
                   marginRight: '1mm', 
                   minWidth: '8mm',
-                  fontSize: '6pt'
+                  fontSize: '8pt'
                 }}>成色:</span>
-                <span className="value" style={{ flex: 1, fontSize: '6pt' }}>
+                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
                   {itemCondition || 'N/A'}
                 </span>
               </div>
@@ -184,12 +165,11 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
                 marginBottom: '0.5mm'
               }}>
                 <span className="label" style={{ 
-                  fontWeight: 'bold', 
                   marginRight: '1mm', 
                   minWidth: '8mm',
-                  fontSize: '6pt'
+                  fontSize: '8pt'
                 }}>购入日期:</span>
-                <span className="value" style={{ flex: 1, fontSize: '6pt' }}>
+                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
                   {purchaseDate || 'N/A'}
                 </span>
               </div>
@@ -200,16 +180,15 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
                 marginBottom: '0.5mm'
               }}>
                 <span className="label" style={{ 
-                  fontWeight: 'bold', 
                   marginRight: '1mm', 
                   minWidth: '8mm',
-                  fontSize: '6pt'
+                  fontSize: '8pt'
                 }}>购入价格:</span>
                 <span className="value price" style={{ 
                   flex: 1, 
                   color: '#e53e3e', 
-                  fontWeight: 'bold',
-                  fontSize: '6pt'
+                  fontWeight: '',
+                  fontSize: '8pt'
                 }}>
                   ¥{purchasePrice || 'N/A'}
                 </span>
@@ -221,16 +200,15 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
                 marginBottom: '0.5mm'
               }}>
                 <span className="label" style={{ 
-                  fontWeight: 'bold', 
                   marginRight: '1mm', 
                   minWidth: '8mm',
-                  fontSize: '6pt'
+                  fontSize: '8pt'
                 }}>购入平台:</span>
                 <span className="purchase-platform" style={{ 
                   flex: 1, 
                   color: '#e53e3e', 
-                  fontWeight: 'bold',
-                  fontSize: '6pt'
+                  fontWeight: '',
+                  fontSize: '8pt'
                 }}>
                   {purchasePlatform || 'N/A'}
                 </span>
@@ -248,16 +226,16 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
               marginBottom: '0.5mm'
             }}>
               <span className="label" style={{ 
-                fontWeight: 'bold', 
+                fontWeight: '', 
                 marginRight: '1mm', 
                 minWidth: '12mm',
-                fontSize: '6pt'
+                fontSize: '8pt'
               }}>上架平台:</span>
               <span className="launch-platform" style={{ 
                 flex: 1, 
                 color: 'black', 
-                fontWeight: 'bold',
-                fontSize: '6pt'
+                fontWeight: '',
+                fontSize: '8pt'
               }}>
                 雅虎 乐天 煤炉 SD STOCKX
               </span>
@@ -269,16 +247,16 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
               marginBottom: '0.5mm'
             }}>
               <span className="label" style={{ 
-                fontWeight: 'bold', 
+                fontWeight: '', 
                 marginRight: '1mm', 
                 minWidth: '12mm',
-                fontSize: '6pt'
+                fontSize: '8pt'
               }}>备注:</span>
               <span className="remarks" style={{ 
                 flex: 1, 
                 color: 'black', 
-                fontWeight: 'bold',
-                fontSize: '6pt'
+                fontWeight: '',
+                fontSize: '8pt'
               }}>
                 {itemRemarks || '无'}
               </span>
@@ -293,7 +271,7 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
             borderTop: '1px solid #000',
             paddingTop: '1mm',
             marginTop: '1mm',
-            fontSize: '6pt'
+            fontSize: '8pt'
           }}>
             {/* 二维码 */}
             <div className="qr-code" style={{

@@ -45,7 +45,7 @@ export default function TestFixPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
+            <span className="text-lg">{EmojiIcons.AlertCircle}</span>
             当前状态
           </CardTitle>
           <CardDescription>
@@ -106,7 +106,7 @@ export default function TestFixPage() {
             onClick={() => setDialogOpen(true)}
             className="gap-2"
           >
-            <Eye className="w-4 h-4" />
+            <span className="text-lg">{EmojiIcons.Eye}</span>
             打开Dialog
           </Button>
           
@@ -149,7 +149,7 @@ export default function TestFixPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" />
+              <span className="text-lg">{EmojiIcons.Package}</span>
               测试Dialog
             </DialogTitle>
           </DialogHeader>

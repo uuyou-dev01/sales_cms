@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
@@ -278,7 +279,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
+      <span className="text-lg">{EmojiIcons.PanelLeft}</span>
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

@@ -22,13 +22,13 @@ export async function POST(req: Request) {
 
     // 批量更新商品状态
     const result = await prisma.$transaction(async (tx) => {
-      // 更新商品状态
+      // 更新商品状态 - itemStatus 字段已删除，只更新交易状态
       const updatedItems = await tx.item.updateMany({
         where: {
           itemId: { in: itemIds },
         },
         data: {
-          itemStatus: status,
+          // itemStatus 字段已删除
         },
       });
 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
           itemId: { in: itemIds },
         },
         data: {
-          transactionStatues: status,
+                  orderStatus: status,
         },
       });
 

@@ -24,10 +24,25 @@ export default async function ItemPage({ params }: ItemPageProps) {
       <div className="max-w-4xl mx-auto px-4">
         {/* 页面标题 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {item.itemName}
-          </h1>
-          <p className="text-gray-600">商品ID: {item.itemId}</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {item.itemName}
+              </h1>
+              <p className="text-gray-600">商品ID: {item.itemId}</p>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                href={`/sales?edit=${item.itemId}`}
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                编辑商品
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* 商品信息卡片 */}
@@ -67,7 +82,7 @@ export default async function ItemPage({ params }: ItemPageProps) {
               </div>
               <div className="flex justify-between">
                 <span className="font-medium text-gray-600">商品状态:</span>
-                <span className="text-gray-900">{item.itemStatus || 'N/A'}</span>
+                <span className="text-gray-900">{item.transactions?.[0]?.orderStatus || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-medium text-gray-600">仓库位置:</span>
@@ -133,7 +148,7 @@ export default async function ItemPage({ params }: ItemPageProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium text-gray-600">交易状态:</span>
-                  <span className="text-gray-900">{transaction.transactionStatues || 'N/A'}</span>
+                  <span className="text-gray-900">{transaction.orderStatus || 'N/A'}</span>
                 </div>
               </div>
             </div>

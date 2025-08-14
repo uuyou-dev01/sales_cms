@@ -7,7 +7,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     
     // 使用表单中的itemId，如果没有则生成新的
-    const itemId = body.itemId || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const generateItemId = () => {
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const letter1 = letters[Math.floor(Math.random() * letters.length)];
+      const letter2 = letters[Math.floor(Math.random() * letters.length)];
+      const numbers = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      return `${letter1}${letter2}${numbers}`;
+    };
+    
+    const itemId = body.itemId || generateItemId();
     
     // 处理其他费用数据
     const otherFees = body.otherFees || [];
@@ -25,11 +33,11 @@ export async function POST(req: Request) {
           itemCondition: body.itemCondition || "",
           itemRemarks: body.itemRemarks || "",
           itemColor: body.itemColor || "",
-          itemStatus: body.itemStatus || "",
           itemSize: body.itemSize || "",
           photos: body.photos || [],
           position: body.position || null,
           warehousePositionId: body.warehousePositionId || null,
+          accessories: body.accessories || null,
         },
       });
 
@@ -42,7 +50,7 @@ export async function POST(req: Request) {
           internationalShipping: String(body.internationalShipping || "0"),
           domesticTrackingNumber: body.domesticTrackingNumber || null,
           internationalTrackingNumber: body.internationalTrackingNumber || null,
-          transactionStatues: body.transactionStatues || "",
+                      orderStatus: body.orderStatus || "在途（国内）",
           purchaseDate: new Date(body.purchaseDate),
           soldDate: body.soldDate ? new Date(body.soldDate) : null,
           launchDate: body.launchDate ? new Date(body.launchDate) : null,

@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -232,7 +233,7 @@ export function WarehouseManagement() {
           <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => resetWarehouseForm()}>
-                <Plus className="w-4 h-4 mr-2" />
+                <span className="text-lg">{EmojiIcons.Plus}</span>
                 添加仓库
               </Button>
             </DialogTrigger>
@@ -280,7 +281,7 @@ export function WarehouseManagement() {
           <Dialog open={positionDialogOpen} onOpenChange={setPositionDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" onClick={() => resetPositionForm()}>
-                <Plus className="w-4 h-4 mr-2" />
+                <span className="text-lg">{EmojiIcons.Plus}</span>
                 添加仓位
               </Button>
             </DialogTrigger>
@@ -354,7 +355,7 @@ export function WarehouseManagement() {
         </div>
       ) : warehouses.length === 0 ? (
         <div className="text-center py-8">
-          <Warehouse className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <span className="text-lg">{EmojiIcons.Warehouse}</span>
           <p className="text-lg font-medium text-gray-900">暂无仓库</p>
           <p className="text-gray-600">开始创建您的第一个仓库吧</p>
         </div>
@@ -366,7 +367,7 @@ export function WarehouseManagement() {
               <div key={warehouse.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-blue-600" />
+                    <span className="text-lg">{EmojiIcons.Building2}</span>
                     <h3 className="font-semibold text-gray-900">{warehouse.name}</h3>
                   </div>
                   <div className="flex gap-1">
@@ -382,12 +383,12 @@ export function WarehouseManagement() {
                         setWarehouseDialogOpen(true);
                       }}
                     >
-                      <Edit className="w-4 h-4" />
+                      <span className="text-lg">{EmojiIcons.Edit}</span>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button size="sm" variant="ghost">
-                          <Trash2 className="w-4 h-4" />
+                          <span className="text-lg">{EmojiIcons.Trash2}</span>
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -445,14 +446,14 @@ export function WarehouseManagement() {
                           setPositionDialogOpen(true);
                         }}
                       >
-                        <Plus className="w-3 h-3" />
+                        <span className="text-lg">{EmojiIcons.Plus}</span>
                       </Button>
                     </div>
                     <div className="space-y-2">
                       {warehouse.positions.map((position) => (
                         <div key={position.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                           <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-gray-500" />
+                            <span className="text-lg">{EmojiIcons.MapPin}</span>
                             <span className="text-sm font-medium">{position.name}</span>
                             <Badge variant="outline" className="text-xs">
                               {position.used}/{position.capacity}
@@ -471,12 +472,12 @@ export function WarehouseManagement() {
                                 setPositionDialogOpen(true);
                               }}
                             >
-                              <Edit className="w-3 h-3" />
+                              <span className="text-lg">{EmojiIcons.Edit}</span>
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button size="sm" variant="ghost">
-                                  <Trash2 className="w-3 h-3" />
+                                  <span className="text-lg">{EmojiIcons.Trash2}</span>
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>

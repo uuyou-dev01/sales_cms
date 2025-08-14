@@ -17,7 +17,10 @@ export async function DELETE(req: Request) {
       // 软删除商品
       await tx.item.update({
         where: { itemId },
-        data: { deleted: true },
+        data: { 
+          deleted: true,
+          updatedAt: new Date()
+        },
       });
 
       // 如果商品在仓库位置中，减少使用量

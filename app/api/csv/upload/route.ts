@@ -48,7 +48,7 @@ export async function POST(req: Request) {
             itemCondition: record.itemCondition,
             itemRemarks: record.itemRemarks || "",
             itemColor: record.itemColor || "",
-            itemStatus: record.itemStatus || "pending",
+            // itemStatus 字段已删除，使用 orderStatus
             itemSize: record.itemSize || "",
           },
         });
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
           data: {
             itemId: record.itemId,
             shipping: record.shipping || "0",
-            transactionStatues: record.transactionStatues || "pending",
+                    orderStatus: record.orderStatus || "在途（国内）",
             purchaseDate: new Date(record.purchaseDate),
             soldDate: record.soldDate ? new Date(record.soldDate) : null,
             launchDate: record.launchDate ? new Date(record.launchDate) : null,

@@ -1,6 +1,7 @@
 "use client"
 
 import { Folder, Forward, MoreHorizontal, Trash2, type LucideIcon } from "lucide-react"
+import { EmojiIcons } from "@/components/emoji-icons";
 
 import {
   DropdownMenu,
@@ -45,7 +46,7 @@ export function NavProjects({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuAction showOnHover>
-                  <MoreHorizontal />
+                  <span className="text-lg">{EmojiIcons.MoreHorizontal}</span>
                   <span className="sr-only">More</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
@@ -55,16 +56,16 @@ export function NavProjects({
                 align={isMobile ? "end" : "start"}
               >
                 <DropdownMenuItem>
-                  <Folder className="text-muted-foreground" />
+                  <span className="text-lg">{EmojiIcons.Folder}</span>
                   <span>View Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Forward className="text-muted-foreground" />
+                  <span className="text-lg">{EmojiIcons.Forward}</span>
                   <span>Share Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <Trash2 className="text-muted-foreground" />
+                  <span className="text-lg">{EmojiIcons.Trash2}</span>
                   <span>Delete Project</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -73,7 +74,7 @@ export function NavProjects({
         ))}
         <SidebarMenuItem>
           <SidebarMenuButton className="text-sidebar-foreground/70">
-            <MoreHorizontal className="text-sidebar-foreground/70" />
+            <span className="text-lg">{EmojiIcons.MoreHorizontal}</span>
             <span>More</span>
           </SidebarMenuButton>
         </SidebarMenuItem>

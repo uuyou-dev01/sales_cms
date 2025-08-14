@@ -1,4 +1,5 @@
 import * as React from "react"
+import { EmojiIcons } from "@/components/emoji-icons";
 import { Slot } from "@radix-ui/react-slot"
 import { ChevronRight, MoreHorizontal } from "lucide-react"
 
@@ -83,7 +84,7 @@ const BreadcrumbSeparator = ({
     className={cn("[&>svg]:w-3.5 [&>svg]:h-3.5", className)}
     {...props}
   >
-    {children ?? <ChevronRight />}
+    {children ?? <span className="text-lg">{EmojiIcons.ChevronRight}</span>}
   </li>
 )
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator"
@@ -98,7 +99,7 @@ const BreadcrumbEllipsis = ({
     className={cn("flex h-9 w-9 items-center justify-center", className)}
     {...props}
   >
-    <MoreHorizontal className="h-4 w-4" />
+    <span className="text-lg">{EmojiIcons.MoreHorizontal}</span>
     <span className="sr-only">More</span>
   </span>
 )

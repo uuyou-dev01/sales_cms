@@ -22,9 +22,12 @@ export async function GET(req: Request) {
 
     // 前端筛选
     let filteredItems = allItems.filter(item => {
-      // 状态筛选
-      if (status && status !== "all" && item.itemStatus !== status) {
-        return false;
+      // 状态筛选 - 使用订单状态而不是商品状态
+      if (status && status !== "all") {
+        const transaction = item.transactions[0];
+        if (!transaction || transaction.orderStatus !== status) {
+          return false;
+        }
       }
 
       // 尺寸筛选
@@ -71,9 +74,21 @@ export async function GET(req: Request) {
       filteredItems.sort((a, b) => {
         const dateA = a.transactions[0]?.purchaseDate || "";
         const dateB = b.transactions[0]?.purchaseDate || "";
+        
+        // 确保日期是字符串格式进行比较
+        if (typeof dateA === "string" && typeof dateB === "string") {
+          return dateSort === "asc" 
+            ? dateA.localeCompare(dateB)
+            : dateB.localeCompare(dateA);
+        }
+        
+        // 如果日期是Date对象，转换为字符串再比较
+        const dateAStr = dateA instanceof Date ? dateA.toISOString() : String(dateA);
+        const dateBStr = dateB instanceof Date ? dateB.toISOString() : String(dateB);
+        
         return dateSort === "asc" 
-          ? dateA.localeCompare(dateB)
-          : dateB.localeCompare(dateA);
+          ? dateAStr.localeCompare(dateBStr)
+          : dateBStr.localeCompare(dateAStr);
       });
     } else if (priceSort) {
       filteredItems.sort((a, b) => {
@@ -92,6 +107,25 @@ export async function GET(req: Request) {
         const durationB = Date.now() - new Date(transactionB.purchaseDate).getTime();
         
         return durationSort === "asc" ? durationA - durationB : durationB - durationA;
+      });
+    } else {
+      // 默认排序：按购入时间降序（越晚购买的越在上面）
+      filteredItems.sort((a, b) => {
+        const dateA = a.transactions[0]?.purchaseDate || "";
+        const dateB = b.transactions[0]?.purchaseDate || "";
+        
+        // 确保日期是字符串格式进行比较
+        if (typeof dateA === "string" && typeof dateB === "string") {
+          // 降序排列：越晚的日期越在上面
+          return dateB.localeCompare(dateA);
+        }
+        
+        // 如果日期是Date对象，转换为字符串再比较
+        const dateAStr = dateA instanceof Date ? dateA.toISOString() : String(dateA);
+        const dateBStr = dateB instanceof Date ? dateB.toISOString() : String(dateB);
+        
+        // 降序排列：越晚的日期越在上面
+        return dateBStr.localeCompare(dateAStr);
       });
     }
 

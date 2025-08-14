@@ -48,6 +48,11 @@ export const STATUS_CONFIG = {
     icon: "✅",
     description: "交易已完成",
   },
+  "已售出未结算": {
+    color: "bg-orange-100 text-orange-800 border-orange-200",
+    icon: "💰",
+    description: "商品已售出但未结算",
+  },
 } as const;
 
 // 状态选项（用于下拉菜单）
@@ -59,6 +64,7 @@ export const STATUS_OPTIONS = [
   { value: TRANSACTION_STATUSES.IN_TRANSACTION, label: "交易中" },
   { value: TRANSACTION_STATUSES.RETURNING, label: "退货中" },
   { value: TRANSACTION_STATUSES.COMPLETED, label: "已完成" },
+  { value: "已售出未结算", label: "已售出未结算" },
 ];
 
 // 其他费用类型
