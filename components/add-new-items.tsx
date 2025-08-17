@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Plus, Upload, X, Save, Printer } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -116,13 +116,16 @@ const formSchema = z.object({
   itemType: z.string().min(1, "请选择商品类型").default("鞋子"),
   itemName: z.string().min(1, "请输入商品名称"),
   itemBrand: z.string().min(1, "请输入品牌").default("Nike"),
-  itemNumber: z.string().min(1, "请输入货号"),
-  domesticShipping: z.string().default("10"),
-  internationalShipping: z.string().default("100"),
+  itemNumber: z.string().optional(),
+  domesticShipping: z.string().default("10").optional(),
+  internationalShipping: z.string().default("100").optional(),
   itemSize: z.string().min(1, "请输入尺码"),
   itemCondition: z.string().min(1, "请选择成色"),
   purchasePrice: z.string().min(1, "请输入购入价格"),
-  purchaseDate: z.date().min(new Date("2025-01-01"), "请输入购入日期"),
+  purchaseDate: z.date().min(new Date("1900-01-01"), "请输入购入日期").refine((date) => {
+    // 允许编辑现有商品时使用原有日期
+    return date instanceof Date && !isNaN(date.getTime());
+  }, "请输入有效的购入日期"),
   orderStatus: z.string().min(1, "请选择订单状态"),
   purchasePlatform: z.string().min(1, "请选择购入平台"),
   domesticTrackingNumber: z.string().optional(),
@@ -132,10 +135,10 @@ const formSchema = z.object({
   
   // 交易信息
   launchDate: z.date().nullable().optional(),
-  storageDuration: z.string().default("0"),
+  storageDuration: z.string().default("0").optional(),
   warehousePositionId: z.string().optional(),
-  listingPlatforms: z.array(z.string()).default([]),
-  isReturn: z.boolean().default(false),
+  listingPlatforms: z.array(z.string()).default([]).optional(),
+  isReturn: z.boolean().default(false).optional(),
   
   // 售出信息
   soldDate: z.date().nullable().optional(),
@@ -243,7 +246,6 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       accessories: "",
       itemRemarks: "",
       shipping: "",
-      orderStatus: "在途（国内）",
       purchasePriceCurrency: "CNY",
       purchasePriceExchangeRate: "1",
       itemGrossProfit: "0",
@@ -258,24 +260,6 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
   // 打印功能 - 在form初始化之后定义
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    onBeforeGetContent: () => {
-      // 在打印前进行验证
-      if (!form.watch("itemId") || !form.watch("itemName")) {
-        toast({
-          title: "打印失败",
-          description: "请先填写商品ID和品名",
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      // 等待一小段时间确保二维码完全加载
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(true);
-        }, 1000);
-      });
-    },
     onPrintError: (error: unknown) => {
       console.error("打印失败:", error);
       toast({

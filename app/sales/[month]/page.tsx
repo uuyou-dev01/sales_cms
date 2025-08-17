@@ -145,7 +145,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
   const [items, setItems] = React.useState<Item[]>([]);
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
-  const [pageSize] = React.useState(10);
+  const [pageSize] = React.useState(40);
   const [loading, setLoading] = React.useState(false);
   const [status, setStatus] = React.useState<string>("all");
   const [refreshFlag, setRefreshFlag] = React.useState(0);
@@ -391,7 +391,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
         <div className="flex items-center gap-4 mb-4">
           <Link href="/sales">
             <Button variant="outline" size="sm" className="gap-2">
-              <span className="text-lg">{EmojiIcons.ArrowLeft}</span>
+              <span className="text-lg"></span>
               返回全部
             </Button>
           </Link>

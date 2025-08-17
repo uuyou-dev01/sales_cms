@@ -137,7 +137,7 @@ export default function SalesPage() {
   const [items, setItems] = React.useState<Item[]>([]);
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
-  const [pageSize] = React.useState(10);
+  const [pageSize] = React.useState(40);
   const [loading, setLoading] = React.useState(false);
   const [status, setStatus] = React.useState<string>("all");
   const [start, setStart] = React.useState<string>("");
