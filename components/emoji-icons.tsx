@@ -44,6 +44,8 @@ export const EmojiIcons = {
   Tag: "🏷️",
   Eye: "👁️",
   Calculator: "🧮",
+  Shop: "🏪",
+  Login: "🔑",
   
   // 仓库和位置
   MapPin: "📍",

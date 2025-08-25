@@ -4,27 +4,14 @@ import QRCode from 'qrcode';
 interface PrintLabelProps {
   itemId: string;
   itemName: string;
-  itemCondition: string;
-  itemSize: string;
-  itemNumber: string;
-  purchasePrice: string;
-  purchasePlatform: string;
-  itemType: string;
   itemRemarks: string;
-  purchaseDate: string;
 }
 
 export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
   ({ 
     itemId, 
     itemName, 
-    itemCondition, 
-    itemSize, 
-    itemNumber, 
-    purchasePrice,
-    purchasePlatform,
-    itemRemarks,
-    purchaseDate
+    itemRemarks
   }, ref) => {
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
@@ -35,7 +22,7 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
           // 生成一个链接，扫描后可以直接进入系统查看这条数据
           const qrData = `${window.location.origin}/item/${itemId}`;
           const dataUrl = await QRCode.toDataURL(qrData, {
-            width: 80,
+            width: 60,
             margin: 1,
             color: {
               dark: '#000000',
@@ -58,17 +45,17 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
 
     return (
       <div ref={ref} className="print-content" style={{ 
-        width: '100mm',
-        height: '70mm',
+        width: '57mm',
+        height: '30mm',
         margin: 0,
-        padding: '3mm',
+        padding: '0.5mm',
         fontFamily: 'Microsoft YaHei, Arial, sans-serif',
         backgroundColor: 'white'
       }}>
         <div className="label-container" style={{
-          border: '2px solid #000',
-          padding: '2mm',
-          height: '64mm',
+          border: '0.5px solid #000',
+          padding: '1mm',
+          height: '28mm',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -77,165 +64,55 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
           {/* 标题区域 */}
           <div className="label-header" style={{
             textAlign: 'center',
-            borderBottom: '1px solid #000',
-            paddingBottom: '1mm',
-            marginBottom: '1mm'
+            paddingBottom: '0.5mm',
+            borderBottom: '0.5px solid #eee'
           }}>
             <h2 style={{ 
               margin: 0, 
-              fontSize: '12pt', 
-              fontWeight: '',
-              lineHeight: '1.2'
+              fontSize: '8pt', 
+              fontWeight: 'bold',
+              lineHeight: '1.1',
+              maxHeight: '8mm',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
             }}>
               {itemName || '商品名称'}
             </h2>
             <div className="label-id" style={{ 
-              fontSize: '8pt', 
-              color: 'black', 
-              marginTop: '0.5mm',
-              fontWeight: ''
+              fontSize: '6pt', 
+              color: '#666', 
+              marginTop: '0.3mm',
+              fontWeight: 'normal'
             }}>
               ID: {itemId || 'N/A'}
             </div>
           </div>
           
-          {/* 商品信息区域 */}
-          <div className="item-info" style={{
-            flex: 1,
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '0.5mm',
-            fontSize: '7pt',
-            marginBottom: '1mm'
-          }}>
-            {/* 第一列 */}
-            <div className="info-column">
-              <div className="info-row" style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: '0.5mm'
-              }}>
-                <span className="label" style={{ 
-                  marginRight: '1mm', 
-                  minWidth: '8mm',
-                  fontSize: '8pt'
-                }}>型号:</span>
-                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
-                  {itemNumber || 'N/A'}
-                </span>
-              </div>
-              
-              
-              <div className="info-row" style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: '0.5mm'
-              }}>
-                <span className="label" style={{ 
-                  marginRight: '1mm', 
-                  minWidth: '8mm',
-                  fontSize: '8pt'
-                }}>尺寸:</span>
-                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
-                  {itemSize || 'N/A'}
-                </span>
-              </div>
-              
-              <div className="info-row" style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: '0.5mm'
-              }}>
-                <span className="label" style={{ 
-                  marginRight: '1mm', 
-                  minWidth: '8mm',
-                  fontSize: '8pt'
-                }}>成色:</span>
-                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
-                  {itemCondition || 'N/A'}
-                </span>
-              </div>
-            </div>
-            
-            {/* 第二列 */}
-            <div className="info-column">
-              <div className="info-row" style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: '0.5mm'
-              }}>
-                <span className="label" style={{ 
-                  marginRight: '1mm', 
-                  minWidth: '8mm',
-                  fontSize: '8pt'
-                }}>购入日期:</span>
-                <span className="value" style={{ flex: 1, fontSize: '8pt' }}>
-                  {purchaseDate || 'N/A'}
-                </span>
-              </div>
-              
-              <div className="info-row" style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: '0.5mm'
-              }}>
-                <span className="label" style={{ 
-                  marginRight: '1mm', 
-                  minWidth: '8mm',
-                  fontSize: '8pt'
-                }}>购入价格:</span>
-                <span className="value price" style={{ 
-                  flex: 1, 
-                  color: '#e53e3e', 
-                  fontWeight: '',
-                  fontSize: '8pt'
-                }}>
-                  ¥{purchasePrice || 'N/A'}
-                </span>
-              </div>
-              
-              <div className="info-row" style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: '0.5mm'
-              }}>
-                <span className="label" style={{ 
-                  marginRight: '1mm', 
-                  minWidth: '8mm',
-                  fontSize: '8pt'
-                }}>购入平台:</span>
-                <span className="purchase-platform" style={{ 
-                  flex: 1, 
-                  color: '#e53e3e', 
-                  fontWeight: '',
-                  fontSize: '8pt'
-                }}>
-                  {purchasePlatform || 'N/A'}
-                </span>
-              </div>
-            </div>
-          </div>
-          
           {/* 上架平台和备注区域 */}
           <div className="platform-remarks" style={{
-            marginBottom: '1mm'
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            padding: '1mm 0'
           }}>
             <div className="info-row" style={{ 
               display: 'flex', 
               alignItems: 'center',
-              marginBottom: '0.5mm'
+              marginBottom: '1mm'
             }}>
               <span className="label" style={{ 
-                fontWeight: '', 
-                marginRight: '1mm', 
-                minWidth: '12mm',
-                fontSize: '8pt'
-              }}>上架平台:</span>
+                fontWeight: 'bold', 
+                marginRight: '0.5mm', 
+                minWidth: '8mm',
+                fontSize: '7pt'
+              }}>上架:</span>
               <span className="launch-platform" style={{ 
                 flex: 1, 
                 color: 'black', 
-                fontWeight: '',
-                fontSize: '8pt'
+                fontWeight: 'normal',
+                fontSize: '7pt'
               }}>
                 雅虎 乐天 煤炉 SD STOCKX
               </span>
@@ -247,16 +124,20 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
               marginBottom: '0.5mm'
             }}>
               <span className="label" style={{ 
-                fontWeight: '', 
-                marginRight: '1mm', 
-                minWidth: '12mm',
-                fontSize: '8pt'
+                fontWeight: 'bold', 
+                marginRight: '0.5mm', 
+                minWidth: '8mm',
+                fontSize: '7pt'
               }}>备注:</span>
               <span className="remarks" style={{ 
                 flex: 1, 
                 color: 'black', 
-                fontWeight: '',
-                fontSize: '8pt'
+                fontWeight: 'normal',
+                fontSize: '7pt',
+                maxHeight: '6mm',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}>
                 {itemRemarks || '无'}
               </span>
@@ -268,15 +149,14 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            borderTop: '1px solid #000',
-            paddingTop: '1mm',
-            marginTop: '1mm',
-            fontSize: '8pt'
+            fontSize: '5pt',
+            borderTop: '0.5px solid #eee',
+            paddingTop: '0.3mm'
           }}>
             {/* 二维码 */}
             <div className="qr-code" style={{
-              width: '20mm',
-              height: '20mm',
+              width: '12mm',
+              height: '12mm',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -286,23 +166,23 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
                   src={qrCodeDataUrl} 
                   alt="QR Code" 
                   style={{
-                    width: '18mm',
-                    height: '18mm',
-                    border: '1px solid #ccc'
+                    width: '10mm',
+                    height: '10mm',
+                    border: '0.5px solid #ccc'
                   }}
                   onLoad={() => console.log('二维码图片加载完成')}
                   onError={(e) => console.error('二维码图片加载失败:', e)}
                 />
               ) : (
                 <div style={{
-                  width: '18mm',
-                  height: '18mm',
-                  border: '1px dashed #ccc',
+                  width: '10mm',
+                  height: '10mm',
+                  border: '0.5px dashed #ccc',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#999',
-                  fontSize: '5pt',
+                  fontSize: '4pt',
                   textAlign: 'center'
                 }}>
                   生成中...
@@ -314,7 +194,8 @@ export const PrintLabel = forwardRef<HTMLDivElement, PrintLabelProps>(
             <div className="print-date" style={{ 
               color: '#666',
               textAlign: 'right',
-              fontSize: '5pt'
+              fontSize: '4pt',
+              lineHeight: '1.1'
             }}>
               <div>打印时间:</div>
               <div>{new Date().toLocaleString('zh-CN')}</div>

@@ -10,13 +10,13 @@ datasource db {
 model Item {
   itemId              String             @id
   itemName            String
-  itemMfgDate         String
+  itemMfgDate         String?
   itemNumber          String
   itemType            String
   itemBrand           String
   itemCondition       String
-  itemRemarks         String
-  itemColor           String
+  itemRemarks         String?
+  itemColor           String?
   itemSize            String
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
@@ -100,4 +100,37 @@ model WarehousePosition {
   updatedAt   DateTime  @updatedAt
   items       Item[]
   warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+}
+
+model Store {
+  id          String   @id
+  name        String   @unique
+  displayName String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  User        User[]
+}
+
+model User {
+  id        String   @id
+  username  String   @unique
+  email     String?  @unique
+  password  String
+  name      String
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+  storeId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  Store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  VIEWER
 }

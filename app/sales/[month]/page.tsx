@@ -3,6 +3,8 @@ import * as React from "react";
 import { EmojiIcons } from "@/components/emoji-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -155,6 +157,10 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
   const [dateSort, setDateSort] = React.useState<"asc" | "desc" | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [monthData, setMonthData] = React.useState<{ month: string } | null>(null);
+  const [remarksDialogOpen, setRemarksDialogOpen] = React.useState(false);
+  const [editingRemarks, setEditingRemarks] = React.useState<{itemId: string, remarks: string} | null>(null);
+  
+
 
   // 解析月份参数
   React.useEffect(() => {
@@ -251,6 +257,14 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
       .then((data) => {
         setItems(data.items);
         setTotal(data.total);
+        
+        // 如果当前页没有数据且不是第一页，则回到上一页
+        if (data.items.length === 0 && page > 1 && data.total > 0) {
+          const newPage = Math.max(1, page - 1);
+          setPage(newPage);
+        }
+        
+
       })
       .catch(() => {
         toast({ title: "获取数据失败", variant: "destructive" });
@@ -277,19 +291,92 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
       const result = await response.json();
       
       if (result.success) {
+        // 直接更新本地状态，避免重新获取数据
+        setItems(prevItems => 
+          prevItems.map(item => {
+            if (item.itemId === itemId) {
+              return {
+                ...item,
+                transactions: item.transactions?.map(trans => ({
+                  ...trans,
+                  orderStatus: newStatus
+                })) || []
+              };
+            }
+            return item;
+          })
+        );
+        
         toast({
           title: "状态更新成功",
           description: `商品状态已更新为：${newStatus}`,
         });
-        
-        // 刷新数据
-        setRefreshFlag(prev => prev + 1);
       } else {
         throw new Error(result.error || "状态更新失败");
       }
     } catch (error) {
       toast({
         title: "状态更新失败",
+        description: error instanceof Error ? error.message : "未知错误",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 备注编辑处理函数
+  const handleRemarksEdit = (itemId: string, currentRemarks: string) => {
+    setEditingRemarks({ itemId, remarks: currentRemarks });
+    setRemarksDialogOpen(true);
+  };
+
+  // 保存备注
+  const handleSaveRemarks = async () => {
+    if (!editingRemarks) return;
+    
+    try {
+      const response = await fetch("/api/items/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemId: editingRemarks.itemId,
+          itemRemarks: editingRemarks.remarks
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("备注更新失败");
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // 直接更新本地状态，避免重新获取数据
+        setItems(prevItems => 
+          prevItems.map(item => {
+            if (item.itemId === editingRemarks.itemId) {
+              return {
+                ...item,
+                itemRemarks: editingRemarks.remarks
+              };
+            }
+            return item;
+          })
+        );
+        
+        toast({
+          title: "备注更新成功",
+          description: "商品备注已成功更新",
+        });
+        
+        // 关闭对话框
+        setRemarksDialogOpen(false);
+        setEditingRemarks(null);
+      } else {
+        throw new Error(result.error || "备注更新失败");
+      }
+    } catch (error) {
+      toast({
+        title: "备注更新失败",
         description: error instanceof Error ? error.message : "未知错误",
         variant: "destructive",
       });
@@ -587,6 +674,12 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                   </div>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{EmojiIcons.FileText}</span>
+                    备注
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   操作
                 </th>
               </tr>
@@ -594,7 +687,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-gray-500">
                       <span className="text-lg">{EmojiIcons.RefreshCw}</span>
                       加载中...
@@ -603,7 +696,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-6 py-12 text-center">
                     <div className="text-gray-500">
                       <span className="text-lg">{EmojiIcons.Package}</span>
                       <p className="text-lg font-medium">{formatMonthDisplay(monthData.month)}暂无商品数据</p>
@@ -671,6 +764,23 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {t?.purchasePlatform || "-"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="max-w-xs">
+                          <div 
+                            className="text-sm text-gray-900 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors"
+                            title={item.itemRemarks || "无备注"}
+                            onClick={() => handleRemarksEdit(item.itemId, item.itemRemarks || "")}
+                          >
+                            {item.itemRemarks ? (
+                              item.itemRemarks.length > 20 ? 
+                                `${item.itemRemarks.substring(0, 20)}...` : 
+                                item.itemRemarks
+                            ) : (
+                              <span className="text-gray-400 italic">无备注</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <DropdownMenu>
@@ -876,6 +986,49 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
         open={exportDialogOpen} 
         onOpenChange={setExportDialogOpen} 
       />
+
+      {/* 备注编辑对话框 */}
+      <SafeDialog open={remarksDialogOpen} onOpenChange={setRemarksDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-lg">{EmojiIcons.FileText}</span>
+              编辑备注
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="remarks" className="text-sm font-medium">
+                商品备注
+              </Label>
+              <Textarea
+                id="remarks"
+                value={editingRemarks?.remarks || ""}
+                onChange={(e) => setEditingRemarks(prev => prev ? {...prev, remarks: e.target.value} : null)}
+                placeholder="输入商品备注信息..."
+                className="mt-1"
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setRemarksDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleSaveRemarks}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              保存备注
+            </Button>
+          </div>
+        </DialogContent>
+      </SafeDialog>
     </>
   );
 } 
