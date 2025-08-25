@@ -21,6 +21,8 @@ export async function POST(req: Request) {
     const otherFees = body.otherFees || [];
     
     const result = await prisma.$transaction(async (tx) => {
+      const outStatuses = ["已完成", "已完成未结算", "交易中"]; // 出库状态
+      const willOut = outStatuses.includes(String(body.orderStatus || "在途（国内）"));
       // 创建商品
       const item = await tx.item.create({
         data: {
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
           itemSize: body.itemSize || "",
           photos: body.photos || [],
           position: body.position || null,
-          warehousePositionId: body.warehousePositionId || null,
+          warehousePositionId: willOut ? null : (body.warehousePositionId || null),
           accessories: body.accessories || null,
         },
       });
@@ -71,8 +73,8 @@ export async function POST(req: Request) {
         },
       });
 
-      // 如果指定了仓库位置，更新使用量
-      if (body.warehousePositionId) {
+      // 如果是占库状态且指定了仓库位置，更新使用量
+      if (!willOut && body.warehousePositionId) {
         await tx.warehousePosition.update({
           where: { id: body.warehousePositionId },
           data: { used: { increment: 1 } },

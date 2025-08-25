@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
+import { type LucideIcon } from "lucide-react"
 import { EmojiIcons } from "@/components/emoji-icons";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -29,6 +29,18 @@ export function NavMain({
     }[]
   }[]
 }) {
+  // 图标映射函数
+  const getIcon = (title: string) => {
+    switch (title) {
+      case "销售管理":
+        return EmojiIcons.ShoppingCart;
+      case "仓库管理":
+        return EmojiIcons.Warehouse;
+      default:
+        return EmojiIcons.Package;
+    }
+  };
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -38,7 +50,7 @@ export function NavMain({
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
                 <SidebarMenuButton tooltip={item.title}>
-                  {item.icon && <item.icon />}
+                  <span className="text-lg">{getIcon(item.title)}</span>
                   <span>{item.title}</span>
                   <span className="text-lg">{EmojiIcons.ChevronRight}</span>
                 </SidebarMenuButton>

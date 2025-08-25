@@ -156,6 +156,14 @@ function useSidebarData() {
               ? { ...item, items: warehouseItems }
               : item
           );
+        } else {
+          console.warn("仓库数据无效或为空:", warehousesData);
+          // 如果没有仓库数据，至少显示一个默认项
+          updatedNavMain = updatedNavMain.map(item => 
+            item.title === "仓库管理" 
+              ? { ...item, items: [{ title: "暂无仓库数据", url: "/warehouse" }] }
+              : item
+          );
         }
         
         console.log("更新后的导航数据:", updatedNavMain);
@@ -168,6 +176,15 @@ function useSidebarData() {
     })
     .catch((error) => {
       console.error("获取侧边栏数据失败:", error);
+      // 出错时设置默认数据
+      setData(prev => ({
+        ...prev,
+        navMain: prev.navMain.map(item => 
+          item.title === "仓库管理" 
+            ? { ...item, items: [{ title: "加载失败", url: "/warehouse" }] }
+            : item
+        )
+      }));
     });
   }, []);
 

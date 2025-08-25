@@ -15,6 +15,7 @@ import { ExportDialog } from "@/components/export-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { formatCNY, convertToCNY } from "@/lib/utils";
 
 function StatusBadge({ status }: { status: string }) {
   const getStatusConfig = (status: string) => {
@@ -560,6 +561,14 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
               <span className="text-lg">{EmojiIcons.Download}</span>
               导出数据
             </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = '/warehouse'}
+              className="gap-2"
+            >
+              <span className="text-lg">{EmojiIcons.Warehouse}</span>
+              仓库管理
+            </Button>
             <Button variant="outline" onClick={() => setRefreshFlag((f) => f + 1)} className="gap-2">
               <span className="text-lg">{EmojiIcons.RefreshCw}</span>
               刷新
@@ -610,6 +619,85 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
             当前查看：{formatMonthDisplay(monthData.month)} 
             ({getMonthDateRange(monthData.month).start} 至 {getMonthDateRange(monthData.month).end})
           </span>
+        </div>
+
+        {/* 月度统计概览 */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="text-lg">{EmojiIcons.TrendingUp}</span>
+            {formatMonthDisplay(monthData.month)} 月度分析
+          </h3>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-lg font-bold text-blue-600 mb-1">
+                {items.filter(item => {
+                  const transaction = item.transactions?.[0];
+                  if (!transaction?.purchaseDate) return false;
+                  const purchaseDate = new Date(transaction.purchaseDate);
+                  const monthStart = new Date(monthData.month + '-01');
+                  const monthEnd = new Date(monthData.month + '-31');
+                  return purchaseDate >= monthStart && purchaseDate <= monthEnd;
+                }).length}
+              </div>
+              <div className="text-xs text-gray-600">购入商品</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-lg font-bold text-green-600 mb-1">
+                {items.filter(item => {
+                  const transaction = item.transactions?.[0];
+                  if (!transaction?.soldDate) return false;
+                  const soldDate = new Date(transaction.soldDate);
+                  const monthStart = new Date(monthData.month + '-01');
+                  const monthEnd = new Date(monthData.month + '-31');
+                  return soldDate >= monthStart && soldDate <= monthEnd;
+                }).length}
+              </div>
+              <div className="text-xs text-gray-600">销售商品</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-lg font-bold text-purple-600 mb-1">
+                {formatCNY(items.filter(item => {
+                  const transaction = item.transactions?.[0];
+                  if (!transaction?.purchaseDate) return false;
+                  const purchaseDate = new Date(transaction.purchaseDate);
+                  const monthStart = new Date(monthData.month + '-01');
+                  const monthEnd = new Date(monthData.month + '-31');
+                  return purchaseDate >= monthStart && purchaseDate <= monthEnd;
+                }).reduce((sum, item) => {
+                  const transaction = item.transactions?.[0];
+                  return sum + convertToCNY(
+                    transaction?.purchasePrice || '0',
+                    transaction?.purchasePriceCurrency || 'CNY',
+                    transaction?.purchasePriceExchangeRate || '1'
+                  );
+                }, 0))}
+              </div>
+              <div className="text-xs text-gray-600">购入金额</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-lg font-bold text-orange-600 mb-1">
+                {formatCNY(items.filter(item => {
+                  const transaction = item.transactions?.[0];
+                  if (!transaction?.soldDate) return false;
+                  const soldDate = new Date(transaction.soldDate);
+                  const monthStart = new Date(monthData.month + '-01');
+                  const monthEnd = new Date(monthData.month + '-31');
+                  return soldDate >= monthStart && soldDate <= monthEnd;
+                }).reduce((sum, item) => {
+                  const transaction = item.transactions?.[0];
+                  return sum + convertToCNY(
+                    transaction?.soldPrice || '0',
+                    transaction?.soldPriceCurrency || 'CNY',
+                    transaction?.soldPriceExchangeRate || '1'
+                  );
+                }, 0))}
+              </div>
+              <div className="text-xs text-gray-600">销售金额</div>
+            </div>
+          </div>
         </div>
       </div>
 

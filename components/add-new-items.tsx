@@ -44,16 +44,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { WarehouseSelector } from "@/components/warehouse-selector";
+import { WarehousePositionCards } from "@/components/warehouse-position-cards";
 import { PricePredictionPanel } from "@/components/price-prediction-panel";
 import { OtherFeesManager } from "@/components/other-fees-manager";
 import { PrintLabel } from "@/components/print-label";
+import { Badge } from "@/components/ui/badge";
 
 import { STATUS_OPTIONS, LISTING_PLATFORM_OPTIONS, CURRENCY_OPTIONS } from "@/lib/constants";
 import { useReactToPrint } from "react-to-print";
 
-
-
-  // 表单数据接口
+// 表单数据接口
 interface FormData {
   // 基本信息
   itemId: string;
@@ -98,15 +98,7 @@ interface FormData {
     description: string;
   }>;
   accessories: string;
-  
-  // 其他字段（保持兼容性）
   itemRemarks: string;
-  shipping: string;
-  purchasePriceCurrency: string;
-  purchasePriceExchangeRate: string;
-  itemGrossProfit: string;
-  itemNetProfit: string;
-  position: string;
 }
 
 // 表单验证模式
@@ -208,8 +200,54 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSuccess, setIsSuccess] = React.useState(false);
-  
+  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState("");
+  const [warehouses, setWarehouses] = React.useState<any[]>([]);
+  const [showWarehouseSelector, setShowWarehouseSelector] = React.useState(!existingData);
 
+  // 获取仓库数据
+  React.useEffect(() => {
+    fetch("/api/warehouses")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setWarehouses(data);
+          
+          // 如果是编辑模式，根据warehousePositionId找到对应的仓库ID
+          if (existingData?.warehousePositionId) {
+            const position = data.flatMap((w: any) => w.positions).find((p: any) => p.id === existingData.warehousePositionId);
+            if (position) {
+              setSelectedWarehouseId(position.warehouseId);
+              console.log("编辑模式：找到仓库ID:", position.warehouseId);
+            }
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("获取仓库数据失败:", error);
+      });
+  }, [existingData?.warehousePositionId]);
+
+  // 获取当前仓库和仓位信息
+  const getCurrentWarehouseInfo = () => {
+    if (!existingData?.warehousePositionId) return null;
+    
+    const position = warehouses.flatMap((w: any) => w.positions).find((p: any) => p.id === existingData.warehousePositionId);
+    if (!position) return null;
+    
+    const warehouse = warehouses.find((w: any) => w.id === position.warehouseId);
+    if (!warehouse) return null;
+    
+    return {
+      warehouseName: warehouse.name,
+      warehouseDescription: warehouse.description,
+      positionName: position.name,
+      positionCapacity: position.capacity,
+      positionUsed: position.used,
+      positionRemaining: position.capacity - position.used
+    };
+  };
+
+  const currentWarehouseInfo = getCurrentWarehouseInfo();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -816,20 +854,88 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
             <FormField
               control={form.control}
               name="warehousePositionId"
-              render={({ field }) => (
-                <FormItem className="md:col-span-2">
-                  <FormLabel>入库位置</FormLabel>
-                  <WarehouseSelector
-                    selectedWarehouseId=""
-                    selectedPositionId={field.value || ""}
-                    onWarehouseChange={() => {}}
-                    onPositionChange={(positionId) => {
-                      field.onChange(positionId);
-                    }}
-                  />
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                // 直接使用仓位ID，不再使用组合值
+                const positionId = field.value || "";
+                
+                console.log("仓库位置选择器 - 当前值:", {
+                  fieldValue: field.value,
+                  positionId,
+                  selectedWarehouseId
+                });
+                
+                return (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>入库位置</FormLabel>
+                     {showWarehouseSelector ? (
+                       <div className="space-y-3">
+                         <WarehousePositionCards
+                           selectedWarehouseId={selectedWarehouseId}
+                           selectedPositionId={positionId}
+                           onWarehouseChange={(newWarehouseId) => {
+                             console.log("选择仓库:", newWarehouseId);
+                             setSelectedWarehouseId(newWarehouseId);
+                             // 当选择仓库时，清空仓位选择
+                             form.setValue("warehousePositionId", "", {
+                               shouldDirty: true,
+                               shouldTouch: true,
+                               shouldValidate: true
+                             });
+                             console.log("设置仓库后表单值:", form.getValues("warehousePositionId"));
+                           }}
+                           onPositionChange={(newPositionId) => {
+                             console.log("选择仓位:", newPositionId);
+                             // 直接设置仓位ID到warehousePositionId字段
+                             form.setValue("warehousePositionId", newPositionId, {
+                               shouldDirty: true,
+                               shouldTouch: true,
+                               shouldValidate: true
+                             });
+                             console.log("设置仓位后表单值:", form.getValues("warehousePositionId"));
+                           }}
+                         />
+                         {existingData && (
+                           <div className="flex justify-end">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => setShowWarehouseSelector(false)}
+                             >
+                               取消修改
+                             </Button>
+                           </div>
+                         )}
+                       </div>
+                     ) : (
+                       <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
+                         <div className="flex-1">
+                           <p className="text-sm font-medium text-gray-700">
+                             {currentWarehouseInfo?.warehouseName || "未选择仓库"}
+                           </p>
+                           <p className="text-xs text-gray-500">
+                             {currentWarehouseInfo?.positionName || "未选择仓位"}
+                           </p>
+                           {currentWarehouseInfo && (
+                             <p className="text-xs text-gray-400 mt-1">
+                               容量: {currentWarehouseInfo.positionCapacity} | 
+                               已用: {currentWarehouseInfo.positionUsed} | 
+                               剩余: {currentWarehouseInfo.positionRemaining}
+                             </p>
+                           )}
+                         </div>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => setShowWarehouseSelector(true)}
+                         >
+                           修改位置
+                         </Button>
+                       </div>
+                     )}
+                     <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField

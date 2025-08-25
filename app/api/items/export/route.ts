@@ -1,12 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+interface DateFilter {
+  gte?: Date;
+  lte?: Date;
+}
+
+interface WhereClause {
+  transactions?: {
+    some: {
+      purchaseDate: DateFilter;
+    };
+  };
+}
+
+interface OtherFee {
+  type?: string;
+  amount?: string | number;
+  currency?: string;
+  description?: string;
+}
+
+interface ExportItem {
+  itemId: string;
+  itemName: string | null;
+  itemNumber: string | null;
+  itemType: string | null;
+  itemBrand: string | null;
+  itemCondition: string | null;
+  itemSize: string | null;
+  itemColor: string | null;
+  itemRemarks: string | null;
+  accessories: string | null;
+  warehousePosition?: {
+    warehouse?: {
+      name: string;
+    } | null;
+    name: string;
+  } | null;
+  transactions: Array<{
+    purchaseDate: Date | null;
+    purchasePrice: string | null;
+    purchasePlatform: string | null;
+    purchasePriceExchangeRate: string | null;
+    purchasePriceCurrency: string | null;
+    domesticShipping: string | null;
+    internationalShipping: string | null;
+    domesticTrackingNumber: string | null;
+    internationalTrackingNumber: string | null;
+    launchDate: Date | null;
+    soldDate: Date | null;
+    soldPrice: string | null;
+    soldPlatform: string | null;
+    soldPriceExchangeRate: string | null;
+    soldPriceCurrency: string | null;
+    itemGrossProfit: string | null;
+    itemNetProfit: string | null;
+    orderStatus: string | null;
+    isReturn: boolean | null;
+    otherFees: OtherFee[] | OtherFee | null;
+    listingPlatforms: string[] | null;
+  }>;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { monthFilter, startDate, endDate } = await request.json();
 
-    let whereClause: any = {};
-    let dateFilter: any = {};
+    let whereClause: WhereClause = {};
+    let dateFilter: DateFilter = {};
 
     // 根据月份筛选条件构建查询
     if (monthFilter === "current") {
@@ -88,7 +150,6 @@ export async function POST(request: NextRequest) {
       '毛利',
       '净利润',
       '订单状态',
-      '交易状态',
       '是否退货',
       '在库时长(天)',
       '仓库名称',
@@ -97,7 +158,7 @@ export async function POST(request: NextRequest) {
       '上架平台',
     ];
 
-    const csvRows = items.map((item) => {
+    const csvRows = items.map((item: ExportItem) => {
       const transaction = item.transactions[0];
       const warehouse = item.warehousePosition?.warehouse;
       const position = item.warehousePosition;
@@ -108,7 +169,31 @@ export async function POST(request: NextRequest) {
 
       // 格式化其他费用
       const otherFeesStr = transaction?.otherFees 
-        ? transaction.otherFees.map(fee => `${fee.type}:${fee.amount}:${fee.currency}:${fee.description}`).join(';')
+        ? (() => {
+            try {
+              if (Array.isArray(transaction.otherFees)) {
+                return transaction.otherFees.map((fee: OtherFee) => {
+                  const type = fee?.type || '未知';
+                  const amount = fee?.amount || '0';
+                  const currency = fee?.currency || 'CNY';
+                  const description = fee?.description || '';
+                  return `${type}:${amount}:${currency}:${description}`;
+                }).join(';');
+              } else if (typeof transaction.otherFees === 'object' && transaction.otherFees !== null) {
+                // 如果是单个对象，转换为数组格式
+                const fee = transaction.otherFees as OtherFee;
+                const type = fee?.type || '未知';
+                const amount = fee?.amount || '0';
+                const currency = fee?.currency || 'CNY';
+                const description = fee?.description || '';
+                return `${type}:${amount}:${currency}:${description}`;
+              }
+              return '';
+            } catch (error) {
+              console.warn('格式化otherFees时出错:', error);
+              return '';
+            }
+          })()
         : '';
 
       // 格式化上架平台
@@ -144,7 +229,7 @@ export async function POST(request: NextRequest) {
         transaction?.soldPriceCurrency || '',
         transaction?.itemGrossProfit || '',
         transaction?.itemNetProfit || '',
-                          transaction?.orderStatus || '',
+        transaction?.orderStatus || '',
         transaction?.isReturn ? '是' : '否',
         daysInStock.toString(),
         warehouse?.name || '',
@@ -157,7 +242,7 @@ export async function POST(request: NextRequest) {
     // 组合CSV内容
     const csvContent = [
       csvHeaders.join(','),
-      ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...csvRows.map((row: string[]) => row.map((cell: string) => `"${cell}"`).join(','))
     ].join('\n');
 
     // 生成文件名
@@ -177,10 +262,15 @@ export async function POST(request: NextRequest) {
     
     filename += `_${timestamp}.csv`;
 
-    return new NextResponse(csvContent, {
+    // 使用 UTF-8 BOM 并以 Uint8Array 返回，避免中文字符编码问题
+    const csvWithBom = "\uFEFF" + csvContent;
+    const body = new TextEncoder().encode(csvWithBom);
+
+    return new NextResponse(body, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        // 同时提供 ASCII filename 和 RFC 5987 的 filename* 以支持中文文件名
+        'Content-Disposition': `attachment; filename="export.csv"; filename*=UTF-8''${encodeURIComponent(filename)}`,
       },
     });
 

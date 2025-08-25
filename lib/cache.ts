@@ -40,39 +40,86 @@ export const getCachedStats = unstable_cache(
             itemGrossProfit: true,
             purchasePlatform: true,
             orderStatus: true,
+            purchaseDate: true,
+            soldDate: true,
+            purchasePriceCurrency: true,
+            purchasePriceExchangeRate: true,
+            soldPriceCurrency: true,
+            soldPriceExchangeRate: true,
           },
         },
       },
     });
 
+    // 货币转换函数：将各种货币转换为人民币
+    const convertToCNY = (amount: string, currency: string, exchangeRate: string): number => {
+      if (!amount || !currency || !exchangeRate) return 0;
+      
+      const numAmount = parseFloat(amount);
+      const numExchangeRate = parseFloat(exchangeRate);
+      
+      if (isNaN(numAmount) || isNaN(numExchangeRate)) return 0;
+      
+      // 如果已经是人民币，直接返回
+      if (currency.toUpperCase() === 'CNY') return numAmount;
+      
+      // 使用汇率转换为人民币
+      return numAmount * numExchangeRate;
+    };
+
+    // 计算总购入金额（转换为人民币）
     const totalPurchase = items.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
-      return sum + (transaction ? parseFloat(transaction.purchasePrice) : 0);
+      if (!transaction) return sum;
+      
+      return sum + convertToCNY(
+        transaction.purchasePrice,
+        transaction.purchasePriceCurrency,
+        transaction.purchasePriceExchangeRate
+      );
     }, 0);
 
+    // 计算总销售金额（转换为人民币）
     const totalSold = items.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
-      return sum + (transaction && transaction.soldPrice ? parseFloat(transaction.soldPrice) : 0);
+      if (!transaction || !transaction.soldPrice) return sum;
+      
+      return sum + convertToCNY(
+        transaction.soldPrice,
+        transaction.soldPriceCurrency,
+        transaction.soldPriceExchangeRate
+      );
     }, 0);
 
-    // 在库商品：包括未上架、已上架、交易中、退货中的商品
+    // 计算总净利润（转换为人民币）
+    const totalProfit = items.reduce((sum: number, item: any) => {
+      const transaction = item.transactions[0];
+      if (!transaction || !transaction.itemNetProfit) return sum;
+      
+      // 净利润通常已经是人民币，但为了安全起见，检查货币类型
+      const profitCurrency = transaction.soldPriceCurrency || 'CNY';
+      const profitExchangeRate = transaction.soldPriceExchangeRate || '1';
+      
+      return sum + convertToCNY(
+        transaction.itemNetProfit,
+        profitCurrency,
+        profitExchangeRate
+      );
+    }, 0);
+
+    // 计算平均利润率
+    const averageProfitRate = totalPurchase > 0 ? ((totalProfit / totalPurchase) * 100).toFixed(2) : "0.00";
+
+    // 库存状态统计
     const inStockCount = items.filter((item: any) => {
       const transaction = item.transactions[0];
       return transaction && ['未上架', '已上架', '交易中', '退货中'].includes(transaction.orderStatus);
     }).length;
     
-    // 已售出商品：状态为已完成的商品
     const soldCount = items.filter((item: any) => {
       const transaction = item.transactions[0];
       return transaction && transaction.orderStatus === '已完成';
     }).length;
-
-    const totalProfit = items.reduce((sum: number, item: any) => {
-      const transaction = item.transactions[0];
-      return sum + (transaction && transaction.itemNetProfit ? parseFloat(transaction.itemNetProfit) : 0);
-    }, 0);
-
-    const averageProfitRate = totalPurchase > 0 ? ((totalProfit / totalPurchase) * 100).toFixed(2) : "0.00";
 
     // 获取仓库数量
     const warehouseCount = await prisma.warehouse.count();
@@ -82,6 +129,7 @@ export const getCachedStats = unstable_cache(
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
+    // 本月购入商品
     const thisMonthItems = items.filter((item: any) => {
       const transaction = item.transactions[0];
       if (!transaction) return false;
@@ -90,6 +138,7 @@ export const getCachedStats = unstable_cache(
       return purchaseDate.getMonth() === currentMonth && purchaseDate.getFullYear() === currentYear;
     });
 
+    // 本月销售商品
     const thisMonthSoldItems = items.filter((item: any) => {
       const transaction = item.transactions[0];
       if (!transaction || !transaction.soldPrice) return false;
@@ -98,38 +147,60 @@ export const getCachedStats = unstable_cache(
       return soldDate.getMonth() === currentMonth && soldDate.getFullYear() === currentYear;
     });
 
+    // 本月销售金额（转换为人民币）
     const thisMonthSoldAmount = thisMonthSoldItems.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
-      return sum + parseFloat(transaction.soldPrice);
+      return sum + convertToCNY(
+        transaction.soldPrice,
+        transaction.soldPriceCurrency,
+        transaction.soldPriceExchangeRate
+      );
     }, 0);
 
     const thisMonthSoldCount = thisMonthSoldItems.length;
 
+    // 本月净利润（转换为人民币）
     const thisMonthSoldProfit = thisMonthSoldItems.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
-      return sum + (transaction.itemNetProfit ? parseFloat(transaction.itemNetProfit) : 0);
+      if (!transaction.itemNetProfit) return sum;
+      
+      return sum + convertToCNY(
+        transaction.itemNetProfit,
+        transaction.soldPriceCurrency || 'CNY',
+        transaction.soldPriceExchangeRate || '1'
+      );
     }, 0);
 
+    // 本月购入金额（转换为人民币）
     const thisMonthPurchaseAmount = thisMonthItems.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
-      return sum + parseFloat(transaction.purchasePrice);
+      return sum + convertToCNY(
+        transaction.purchasePrice,
+        transaction.purchasePriceCurrency,
+        transaction.purchasePriceExchangeRate
+      );
     }, 0);
 
     const thisMonthPurchaseCount = thisMonthItems.length;
 
+    // 计算库存周转率
+    const turnoverRate = items.length > 0 ? ((soldCount / items.length) * 100).toFixed(1) : "0.0";
+
     return {
-      totalPurchase,
-      totalSold,
+      totalPurchase: Math.round(totalPurchase * 100) / 100, // 保留两位小数
+      totalSold: Math.round(totalSold * 100) / 100,
+      totalProfit: Math.round(totalProfit * 100) / 100,
       averageProfitRate,
       inStockCount,
       soldCount,
       totalItems: items.length,
       warehouseCount,
-      thisMonthSoldAmount,
+      thisMonthSoldAmount: Math.round(thisMonthSoldAmount * 100) / 100,
       thisMonthSoldCount,
-      thisMonthSoldProfit,
-      thisMonthPurchaseAmount,
+      thisMonthSoldProfit: Math.round(thisMonthSoldProfit * 100) / 100,
+      thisMonthPurchaseAmount: Math.round(thisMonthPurchaseAmount * 100) / 100,
       thisMonthPurchaseCount,
+      turnoverRate,
     };
   },
   ['stats'],

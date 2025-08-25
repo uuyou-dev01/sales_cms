@@ -31,6 +31,7 @@ export async function PUT(req: Request) {
     const otherFees = data.otherFees || [];
 
     const result = await prisma.$transaction(async (tx) => {
+      const outStatuses = ["已完成", "已完成未结算", "交易中"]; // 出库状态
       // 获取原始商品信息
       const originalItem = await tx.item.findUnique({
         where: { itemId },
@@ -56,7 +57,7 @@ export async function PUT(req: Request) {
           itemSize: data.itemSize || "",
           photos: data.photos || [],
           position: data.position || null,
-          warehousePositionId: data.warehousePositionId || null,
+          warehousePositionId: outStatuses.includes(String(data.orderStatus || "")) ? null : (data.warehousePositionId || null),
           accessories: data.accessories || null,
         },
       });
@@ -99,14 +100,27 @@ export async function PUT(req: Request) {
 
       // 处理仓库位置变更
       const oldWarehousePositionId = originalItem?.warehousePositionId;
-      const newWarehousePositionId = data.warehousePositionId;
+      const newWarehousePositionId = outStatuses.includes(String(data.orderStatus || "")) ? null : data.warehousePositionId;
 
       if (oldWarehousePositionId && oldWarehousePositionId !== newWarehousePositionId) {
-        // 减少旧位置的使用量
-        await tx.warehousePosition.update({
+        // 减少旧位置的使用量（非负保护）
+        const oldPos = await tx.warehousePosition.findUnique({
           where: { id: oldWarehousePositionId },
-          data: { used: { decrement: 1 } },
+          select: { used: true },
         });
+        if (oldPos) {
+          if (oldPos.used > 0) {
+            await tx.warehousePosition.update({
+              where: { id: oldWarehousePositionId },
+              data: { used: { decrement: 1 } },
+            });
+          } else {
+            await tx.warehousePosition.update({
+              where: { id: oldWarehousePositionId },
+              data: { used: 0 },
+            });
+          }
+        }
       }
 
       if (newWarehousePositionId && newWarehousePositionId !== oldWarehousePositionId) {
@@ -124,6 +138,27 @@ export async function PUT(req: Request) {
           where: { id: newWarehousePositionId },
           data: { used: { increment: 1 } },
         });
+      }
+
+      // 如果切换到了出库状态，且原来有仓位，占用需要安全扣减
+      if (!newWarehousePositionId && oldWarehousePositionId) {
+        const oldPos = await tx.warehousePosition.findUnique({
+          where: { id: oldWarehousePositionId },
+          select: { used: true },
+        });
+        if (oldPos) {
+          if (oldPos.used > 0) {
+            await tx.warehousePosition.update({
+              where: { id: oldWarehousePositionId },
+              data: { used: { decrement: 1 } },
+            });
+          } else {
+            await tx.warehousePosition.update({
+              where: { id: oldWarehousePositionId },
+              data: { used: 0 },
+            });
+          }
+        }
       }
 
       return updatedItem;

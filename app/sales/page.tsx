@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { STATUS_CONFIG, TRANSACTION_STATUSES } from "@/lib/constants";
 import { useSearchParams } from "next/navigation";
 import { ExportDialog } from "@/components/export-dialog";
-import { ItemsTable } from "@/components/items-table";
 
 function StatusBadge({ status }: { status: string }) {
   const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || {
@@ -453,6 +452,7 @@ export default function SalesPage() {
   const [stats, setStats] = React.useState({
     totalPurchase: 0,
     totalSold: 0,
+    totalProfit: 0,
     averageProfitRate: "0.00",
     inStockCount: 0,
     soldCount: 0,
@@ -463,7 +463,7 @@ export default function SalesPage() {
     thisMonthSoldProfit: 0,
     thisMonthPurchaseAmount: 0,
     thisMonthPurchaseCount: 0,
-
+    turnoverRate: "0.0",
   });
 
   // 获取统计数据
@@ -530,112 +530,135 @@ export default function SalesPage() {
       )}
 
       {/* 页面标题和描述 */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">商品管理</h1>
         <p className="text-gray-600">上传、管理和跟踪您的商品库存</p>
       </div>
 
-      {/* 核心统计区域 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-1">总购入金额</p>
-              <p className="text-lg font-bold text-gray-900">¥{stats.totalPurchase.toLocaleString()}</p>
-            </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <span className="text-blue-600 text-lg">🛒</span>
-            </div>
+      {/* 科学统计仪表板 */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">销售数据概览</h2>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span className="text-lg">{EmojiIcons.Calendar}</span>
+            数据更新于 {new Date().toLocaleDateString('zh-CN')}
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-1">总销售金额</p>
-              <p className="text-lg font-bold text-gray-900">¥{stats.totalSold.toLocaleString()}</p>
+        {/* 核心KPI指标 */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600 mb-1">
+              ¥{stats.totalPurchase.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <span className="text-green-600 text-lg">📈</span>
+            <div className="text-xs text-gray-600">总购入金额</div>
+            <div className="text-xs text-green-600 mt-1">📈 累计投资</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600 mb-1">
+              ¥{stats.totalSold.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
+            <div className="text-xs text-gray-600">总销售金额</div>
+            <div className="text-xs text-blue-600 mt-1">💰 累计收入</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600 mb-1">
+              ¥{stats.totalProfit.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-xs text-gray-600">总净利润</div>
+            <div className="text-xs text-purple-600 mt-1">📊 累计盈利</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-indigo-600 mb-1">
+              {stats.averageProfitRate}%
+            </div>
+            <div className="text-xs text-gray-600">平均利润率</div>
+            <div className="text-xs text-indigo-600 mt-1">📈 盈利能力</div>
           </div>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-1">平均利润率</p>
-              <p className="text-lg font-bold text-gray-900">{stats.averageProfitRate}%</p>
-            </div>
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <span className="text-purple-600 text-lg">💰</span>
+
+        {/* 月度趋势分析 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 本月表现 */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <span className="text-lg">{EmojiIcons.Calendar}</span>
+              本月表现分析
+            </h3>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">购入</span>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-blue-600">{stats.thisMonthPurchaseCount}件</div>
+                  <div className="text-xs text-gray-500">¥{stats.thisMonthPurchaseAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">销售</span>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-green-600">{stats.thisMonthSoldCount}件</div>
+                  <div className="text-xs text-gray-500">¥{stats.thisMonthSoldAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+                <span className="text-xs text-gray-600">净利润</span>
+                <div className="text-sm font-bold text-purple-600">
+                  ¥{stats.thisMonthSoldProfit.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-1">总商品数</p>
-              <p className="text-lg font-bold text-gray-900">{stats.totalItems}</p>
-            </div>
-            <div className="p-2 bg-indigo-100 rounded-lg">
-              <span className="text-indigo-600 text-lg">📦</span>
+
+          {/* 库存状态 */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <span className="text-lg">{EmojiIcons.Package}</span>
+              库存状态概览
+            </h3>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">商品总数</span>
+                <div className="text-sm font-semibold text-indigo-600">{stats.totalItems}</div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">在库商品</span>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-semibold text-indigo-600">{stats.inStockCount}</div>
+                  <div className="w-16 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-indigo-500 h-2 rounded-full" 
+                      style={{ width: `${(stats.inStockCount / stats.totalItems) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">已售商品</span>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-semibold text-green-600">{stats.soldCount}</div>
+                  <div className="w-16 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full" 
+                      style={{ width: `${(stats.soldCount / stats.totalItems) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-green-200">
+                <span className="text-xs text-gray-600">周转率</span>
+                <div className="text-sm font-bold text-green-600">
+                  {stats.turnoverRate}%
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* 本月统计 + 库存状态 + 快速操作 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* 本月统计 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">本月统计</h3>
-          <div className="space-y-1">
-          <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">购入数量</span>
-              <span className="text-sm font-semibold text-blue-600">{stats.thisMonthPurchaseCount} 件</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">购入金额</span>
-              <span className="text-sm font-semibold text-blue-600">¥{stats.thisMonthPurchaseAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">销售数量</span>
-              <span className="text-sm font-semibold text-orange-600">{stats.thisMonthSoldCount} 件</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">销售金额</span>
-              <span className="text-sm font-semibold text-orange-600">¥{stats.thisMonthSoldAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">净利润</span>
-              <span className="text-sm font-semibold text-purple-600">¥{stats.thisMonthSoldProfit.toLocaleString()}</span>
-            </div>
-            
-          </div>
-        </div>
-
-        {/* 库存状态 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">库存状态</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">在库商品</span>
-              <span className="text-sm font-semibold text-indigo-600">{stats.inStockCount}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">已售商品</span>
-              <span className="text-sm font-semibold text-green-600">{stats.soldCount}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">仓库数量</span>
-              <span className="text-sm font-semibold text-orange-600">{stats.warehouseCount || 0}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* 库存状态统计 */}
 
       {/* 操作按钮和筛选区域 */}
@@ -704,6 +727,15 @@ export default function SalesPage() {
           >
             <span className="text-lg">{EmojiIcons.Download}</span>
             导出数据
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.href = '/warehouse'}
+            className="gap-1 px-3"
+          >
+            <span className="text-lg">{EmojiIcons.Warehouse}</span>
+            仓库管理
           </Button>
           <Button variant="outline" size="sm" onClick={() => setRefreshFlag((f) => f + 1)} className="gap-1 px-3">
             <span className="text-lg">{EmojiIcons.RefreshCw}</span>
