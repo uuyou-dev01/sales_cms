@@ -183,6 +183,23 @@ export default function SalesPage() {
     }
   }, [selectAll, unsettledItems]);
 
+  // 当unsettledItems变化时，如果当前选中的项目不在未结算列表中，自动取消选择
+  React.useEffect(() => {
+    const validSelectedItems = selectedItems.filter(itemId => 
+      unsettledItems.some(item => item.itemId === itemId)
+    );
+    
+    if (validSelectedItems.length !== selectedItems.length) {
+      setSelectedItems(validSelectedItems);
+      // 如果所有有效项目都被选中，保持全选状态
+      if (validSelectedItems.length === unsettledItems.length && unsettledItems.length > 0) {
+        setSelectAll(true);
+      } else {
+        setSelectAll(false);
+      }
+    }
+  }, [unsettledItems, selectedItems]);
+
   // 状态变更处理函数
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     try {
@@ -217,6 +234,9 @@ export default function SalesPage() {
             return item;
           })
         );
+        
+        // 强制重新计算unsettledItems
+        setRefreshFlag(prev => prev + 1);
         
         toast({
           title: "状态更新成功",
@@ -273,6 +293,9 @@ export default function SalesPage() {
             return item;
           })
         );
+        
+        // 强制重新计算状态
+        setRefreshFlag(prev => prev + 1);
         
         toast({
           title: "备注更新成功",

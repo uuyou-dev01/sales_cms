@@ -11,8 +11,8 @@ const PLATFORM_FEES = {
 // 日本邮费（日元）
 const JAPAN_SHIPPING_FEE = 800;
 
-// 汇率（日元兑人民币，简化处理）
-const JPY_TO_CNY_RATE = 0.05; // 1日元 ≈ 0.048人民币
+// 汇率（日元兑人民币，应该从实时汇率API获取，这里使用近似值）
+const JPY_TO_CNY_RATE = 0.05; // 1日元 ≈ 0.05人民币（建议从汇率API获取实时汇率）
 
 export async function POST(req: Request) {
   try {

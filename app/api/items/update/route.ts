@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidateTag } from "next/cache";
+import { calculateProfit } from "@/lib/profit-calculator";
 
 export async function PUT(req: Request) {
   try {
@@ -27,8 +28,49 @@ export async function PUT(req: Request) {
     console.log("所有更新字段:", Object.keys(data));
     console.log("字段值详情:", data);
 
+    // 如果只更新备注，走轻量路径，避免误改其它字段
+    if (Object.keys(data).length === 1 && Object.prototype.hasOwnProperty.call(data, 'itemRemarks')) {
+      try {
+        const updated = await prisma.item.update({
+          where: { itemId },
+          data: { itemRemarks: data.itemRemarks ?? '' },
+        });
+        revalidateTag('items');
+        revalidateTag('stats');
+        revalidateTag('months');
+        return NextResponse.json({ success: true, item: updated });
+      } catch (err) {
+        console.error('仅备注更新失败:', err);
+        return NextResponse.json({ error: '备注更新失败' }, { status: 500 });
+      }
+    }
+
     // 处理其他费用数据
     const otherFees = data.otherFees || [];
+
+    // 自动计算利润（如果有售价）
+    let grossProfit = "0";
+    let netProfit = "0";
+    
+    if (data.soldPrice && parseFloat(data.soldPrice) > 0) {
+      const profitResult = calculateProfit({
+        soldPrice: data.soldPrice,
+        soldPriceCurrency: data.soldPriceCurrency,
+        soldPriceExchangeRate: data.soldPriceExchangeRate,
+        purchasePrice: data.purchasePrice,
+        purchasePriceCurrency: data.purchasePriceCurrency,
+        purchasePriceExchangeRate: data.purchasePriceExchangeRate,
+        domesticShipping: data.domesticShipping,
+        internationalShipping: data.internationalShipping,
+        otherFees: otherFees.map(fee => ({
+          amount: fee.amount,
+          currency: fee.currency
+        }))
+      });
+      
+      grossProfit = String(profitResult.grossProfitCNY);
+      netProfit = String(profitResult.netProfitCNY);
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const outStatuses = ["已完成", "已完成未结算", "交易中"]; // 出库状态
@@ -90,8 +132,8 @@ export async function PUT(req: Request) {
             soldPrice: String(data.soldPrice || "0"),
             soldPriceCurrency: data.soldPriceCurrency || "CNY",
             soldPriceExchangeRate: String(data.soldPriceExchangeRate || "1"),
-            itemGrossProfit: String(data.itemGrossProfit || "0"),
-            itemNetProfit: String(data.itemNetProfit || "0"),
+            itemGrossProfit: grossProfit,
+            itemNetProfit: netProfit,
             isReturn: data.isReturn || false,
             storageDuration: String(data.storageDuration || "0"),
           },
@@ -170,7 +212,7 @@ export async function PUT(req: Request) {
     revalidateTag('months');
     revalidateTag('warehouses');
 
-    return NextResponse.json(result);
+    return NextResponse.json({ success: true, item: result });
   } catch (error) {
     console.error("更新商品失败:", error);
     return NextResponse.json(

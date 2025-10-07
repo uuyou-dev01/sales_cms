@@ -91,20 +91,14 @@ export const getCachedStats = unstable_cache(
       );
     }, 0);
 
-    // 计算总净利润（转换为人民币）
+    // 计算总净利润（已经是人民币，无需转换）
     const totalProfit = items.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
       if (!transaction || !transaction.itemNetProfit) return sum;
       
-      // 净利润通常已经是人民币，但为了安全起见，检查货币类型
-      const profitCurrency = transaction.soldPriceCurrency || 'CNY';
-      const profitExchangeRate = transaction.soldPriceExchangeRate || '1';
-      
-      return sum + convertToCNY(
-        transaction.itemNetProfit,
-        profitCurrency,
-        profitExchangeRate
-      );
+      // 净利润已经是人民币格式，直接相加
+      const profit = parseFloat(transaction.itemNetProfit);
+      return sum + (isNaN(profit) ? 0 : profit);
     }, 0);
 
     // 计算平均利润率
@@ -138,12 +132,18 @@ export const getCachedStats = unstable_cache(
       return purchaseDate.getMonth() === currentMonth && purchaseDate.getFullYear() === currentYear;
     });
 
-    // 本月销售商品
+    // 本月销售商品（基于已完成状态和soldDate）
     const thisMonthSoldItems = items.filter((item: any) => {
       const transaction = item.transactions[0];
-      if (!transaction || !transaction.soldPrice) return false;
+      if (!transaction || !transaction.soldPrice || transaction.orderStatus !== '已完成') return false;
+      
+      // 如果没有soldDate，则跳过
+      if (!transaction.soldDate) return false;
       
       const soldDate = new Date(transaction.soldDate);
+      // 验证日期有效性
+      if (isNaN(soldDate.getTime())) return false;
+      
       return soldDate.getMonth() === currentMonth && soldDate.getFullYear() === currentYear;
     });
 
@@ -159,16 +159,14 @@ export const getCachedStats = unstable_cache(
 
     const thisMonthSoldCount = thisMonthSoldItems.length;
 
-    // 本月净利润（转换为人民币）
+    // 本月净利润（已经是人民币，无需转换）
     const thisMonthSoldProfit = thisMonthSoldItems.reduce((sum: number, item: any) => {
       const transaction = item.transactions[0];
       if (!transaction.itemNetProfit) return sum;
       
-      return sum + convertToCNY(
-        transaction.itemNetProfit,
-        transaction.soldPriceCurrency || 'CNY',
-        transaction.soldPriceExchangeRate || '1'
-      );
+      // 净利润已经是人民币格式，直接相加
+      const profit = parseFloat(transaction.itemNetProfit);
+      return sum + (isNaN(profit) ? 0 : profit);
     }, 0);
 
     // 本月购入金额（转换为人民币）

@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || undefined;
     const size = searchParams.get("size") || undefined;
     const platform = searchParams.get("platform") || undefined;
+    const itemType = searchParams.get("itemType") || undefined;
     const dateSort = searchParams.get("dateSort") || undefined;
     const priceSort = searchParams.get("priceSort") || undefined;
     const durationSort = searchParams.get("durationSort") || undefined;
@@ -39,6 +40,13 @@ export async function GET(req: Request) {
       if (platform && platform !== "all") {
         const transaction = item.transactions[0];
         if (!transaction || transaction.purchasePlatform !== platform) {
+          return false;
+        }
+      }
+
+      // 商品类型筛选
+      if (itemType && itemType !== "all") {
+        if (item.itemType !== itemType) {
           return false;
         }
       }

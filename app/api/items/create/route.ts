@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidateTag } from "next/cache";
+import { calculateProfit } from "@/lib/profit-calculator";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // 使用表单中的itemId，如果没有则生成新的
+    // 生成唯一的商品ID（与批量导入逻辑保持一致）
     const generateItemId = () => {
       const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       const letter1 = letters[Math.floor(Math.random() * letters.length)];
@@ -15,10 +16,52 @@ export async function POST(req: Request) {
       return `${letter1}${letter2}${numbers}`;
     };
     
-    const itemId = body.itemId || generateItemId();
+    // 生成唯一ID，检查重复
+    let itemId = body.itemId || generateItemId();
+    if (!body.itemId) {
+      // 如果没有提供itemId，则生成新的并检查重复
+      let attempts = 0;
+      const maxAttempts = 10;
+      while (attempts < maxAttempts) {
+        const existingItem = await prisma.item.findUnique({ where: { itemId } });
+        if (!existingItem) {
+          break;
+        }
+        itemId = generateItemId();
+        attempts++;
+      }
+      
+      if (attempts === maxAttempts) {
+        throw new Error("无法生成唯一的商品ID，请重试");
+      }
+    }
     
     // 处理其他费用数据
     const otherFees = body.otherFees || [];
+
+    // 自动计算利润（如果有售价）
+    let grossProfit = "0";
+    let netProfit = "0";
+    
+    if (body.soldPrice && parseFloat(body.soldPrice) > 0) {
+      const profitResult = calculateProfit({
+        soldPrice: body.soldPrice,
+        soldPriceCurrency: body.soldPriceCurrency,
+        soldPriceExchangeRate: body.soldPriceExchangeRate,
+        purchasePrice: body.purchasePrice,
+        purchasePriceCurrency: body.purchasePriceCurrency,
+        purchasePriceExchangeRate: body.purchasePriceExchangeRate,
+        domesticShipping: body.domesticShipping,
+        internationalShipping: body.internationalShipping,
+        otherFees: otherFees.map(fee => ({
+          amount: fee.amount,
+          currency: fee.currency
+        }))
+      });
+      
+      grossProfit = String(profitResult.grossProfitCNY);
+      netProfit = String(profitResult.netProfitCNY);
+    }
     
     const result = await prisma.$transaction(async (tx) => {
       const outStatuses = ["已完成", "已完成未结算", "交易中"]; // 出库状态
@@ -66,8 +109,8 @@ export async function POST(req: Request) {
           soldPrice: String(body.soldPrice || "0"),
           soldPriceCurrency: body.soldPriceCurrency || "CNY",
           soldPriceExchangeRate: String(body.soldPriceExchangeRate || "1"),
-          itemGrossProfit: String(body.itemGrossProfit || "0"),
-          itemNetProfit: String(body.itemNetProfit || "0"),
+          itemGrossProfit: grossProfit,
+          itemNetProfit: netProfit,
           isReturn: body.isReturn || false,
           storageDuration: String(body.storageDuration || "0"),
         },

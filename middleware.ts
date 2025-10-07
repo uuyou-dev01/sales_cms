@@ -18,16 +18,26 @@ const protectedRoutes = [
   '/api/debug'
 ];
 
+// 不需要认证的API路由（即使在保护路由下）
+const publicApiRoutes = [
+  '/api/items/create-sku'
+];
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // 检查是否是公开的API路由
+  const isPublicApiRoute = publicApiRoutes.some(route => 
+    pathname === route
+  );
   
   // 检查是否是受保护的路由
   const isProtectedRoute = protectedRoutes.some(route => 
     pathname.startsWith(route)
   );
   
-  // 如果是受保护的路由，检查认证
-  if (isProtectedRoute) {
+  // 如果是受保护的路由但不是公开API路由，检查认证
+  if (isProtectedRoute && !isPublicApiRoute) {
     const authCookie = request.cookies.get('auth-session');
     
     if (!authCookie?.value) {

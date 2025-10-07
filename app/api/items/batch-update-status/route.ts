@@ -1,68 +1,63 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { revalidateTag } from "next/cache";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { clearItemsCache } from '@/lib/cache';
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { itemIds, status } = await req.json();
-    
+    const { itemIds, newStatus } = await request.json();
+
     if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
       return NextResponse.json(
-        { error: "请提供有效的商品ID列表" },
+        { error: '请提供要更新的商品ID列表' },
         { status: 400 }
       );
     }
 
-    if (!status) {
+    if (!newStatus) {
       return NextResponse.json(
-        { error: "请提供状态" },
+        { error: '请提供新的状态' },
         { status: 400 }
       );
     }
 
     // 批量更新商品状态
-    const result = await prisma.$transaction(async (tx) => {
-      // 更新商品状态 - itemStatus 字段已删除，只更新交易状态
-      const updatedItems = await tx.item.updateMany({
-        where: {
-          itemId: { in: itemIds },
-        },
-        data: {
-          // itemStatus 字段已删除
-        },
-      });
-
-      // 更新交易状态
-      const updatedTransactions = await tx.transaction.updateMany({
-        where: {
-          itemId: { in: itemIds },
-        },
-        data: {
-                  orderStatus: status,
-        },
-      });
-
-      return {
-        updatedItems: updatedItems.count,
-        updatedTransactions: updatedTransactions.count,
-      };
+    const updateResult = await prisma.item.updateMany({
+      where: {
+        itemId: {
+          in: itemIds
+        }
+      },
+      data: {
+        transactionStatues: newStatus
+      }
     });
 
-    // 重新验证缓存
-    revalidateTag('items');
-    revalidateTag('stats');
-    revalidateTag('months');
+    // 同时更新对应的交易记录状态
+    await prisma.transaction.updateMany({
+      where: {
+        itemId: {
+          in: itemIds
+        }
+      },
+      data: {
+        orderStatus: newStatus
+      }
+    });
+
+    // 清除缓存
+    await clearItemsCache();
 
     return NextResponse.json({
       success: true,
-      message: `成功更新 ${result.updatedItems} 个商品的状态`,
-      result,
+      updatedCount: updateResult.count,
+      message: `成功更新 ${updateResult.count} 个商品的状态`
     });
+
   } catch (error) {
-    console.error("批量更新状态错误:", error || "未知错误");
+    console.error('批量更新状态失败:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "批量更新状态失败" },
+      { error: '批量更新状态失败' },
       { status: 500 }
     );
   }
-} 
+}

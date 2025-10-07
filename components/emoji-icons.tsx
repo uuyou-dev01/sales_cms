@@ -51,6 +51,16 @@ export const EmojiIcons = {
   MapPin: "📍",
   Building2: "🏢",
   Warehouse: "🏭",
+  Truck: "🚚",
+  
+  // 图表和分析
+  BarChart: "📊",
+  PieChart: "🥧",
+  Lightbulb: "💡",
+  Zap: "⚡",
+  
+  // 打印和标签
+  Printer: "🖨️",
   
   // 其他
   FileText: "📄",

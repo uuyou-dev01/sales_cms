@@ -52,6 +52,8 @@ import { Badge } from "@/components/ui/badge";
 
 import { STATUS_OPTIONS, LISTING_PLATFORM_OPTIONS, CURRENCY_OPTIONS } from "@/lib/constants";
 import { useReactToPrint } from "react-to-print";
+import { AutocompleteInput } from "@/components/autocomplete-input";
+import { calculateProfit } from "@/lib/profit-calculator";
 
 // 表单数据接口
 interface FormData {
@@ -168,6 +170,7 @@ const ITEM_TYPES = [
   { value: "包包", label: "包包" },
   { value: "配饰", label: "配饰" },
   { value: "电子产品", label: "电子产品" },
+  { value: "潮玩类", label: "潮玩类" },
   { value: "其他", label: "其他" },
 ];
 
@@ -249,10 +252,19 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
 
   const currentWarehouseInfo = getCurrentWarehouseInfo();
 
+  // 生成商品ID（与批量导入保持一致）
+  const generateItemId = () => {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const letter1 = letters[Math.floor(Math.random() * letters.length)];
+    const letter2 = letters[Math.floor(Math.random() * letters.length)];
+    const numbers = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    return `${letter1}${letter2}${numbers}`;
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: existingData || {
-      itemId: `${Date.now()}`,
+      itemId: generateItemId(),
       itemType: "鞋子",
       itemName: "",
       itemBrand: "Nike",
@@ -291,6 +303,7 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
       position: "",
     },
   });
+
 
   // 打印相关
   const printRef = React.useRef<HTMLDivElement>(null);
@@ -333,25 +346,29 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
         data.storageDuration = days.toString();
       }
 
-      // 计算净利润
-      const purchasePrice = parseFloat(data.purchasePrice || "0");
-      const domesticShipping = parseFloat(data.domesticShipping || "0");
-      const internationalShipping = parseFloat(data.internationalShipping || "0");
-      const otherFeesTotal = data.otherFees.reduce((sum, fee) => {
-        const amount = parseFloat(fee.amount || "0");
-        const currency = fee.currency || "JPY";
-        const exchangeRate = currency === "JPY" ? 0.05 : 1;
-        return sum + (amount * exchangeRate);
-      }, 0);
-      const soldPrice = parseFloat(data.soldPrice || "0");
-      const soldPriceCurrency = data.soldPriceCurrency || "JPY";
-      const soldPriceExchangeRate = parseFloat(data.soldPriceExchangeRate || "0.05");
-      const soldPriceCNY = soldPrice * soldPriceExchangeRate;
-      const totalCost = purchasePrice + domesticShipping + internationalShipping + otherFeesTotal;
-      const netProfit = soldPriceCNY - totalCost;
-
-      data.itemNetProfit = netProfit.toFixed(2);
-      data.itemGrossProfit = "0"; // 删除grossProfit，设为0
+      // 使用统一的利润计算函数
+      if (data.soldPrice && parseFloat(data.soldPrice) > 0) {
+        const profitResult = calculateProfit({
+          soldPrice: data.soldPrice,
+          soldPriceCurrency: data.soldPriceCurrency || "JPY",
+          soldPriceExchangeRate: data.soldPriceExchangeRate || "0.05",
+          purchasePrice: data.purchasePrice,
+          purchasePriceCurrency: data.purchasePriceCurrency || "CNY",
+          purchasePriceExchangeRate: data.purchasePriceExchangeRate || "1",
+          domesticShipping: data.domesticShipping,
+          internationalShipping: data.internationalShipping,
+          otherFees: data.otherFees.map(fee => ({
+            amount: fee.amount,
+            currency: fee.currency || "JPY"
+          }))
+        });
+        
+        data.itemGrossProfit = profitResult.grossProfitCNY.toFixed(2);
+        data.itemNetProfit = profitResult.netProfitCNY.toFixed(2);
+      } else {
+        data.itemGrossProfit = "0";
+        data.itemNetProfit = "0";
+      }
 
       const url = existingData ? "/api/items/update" : "/api/items/create";
       const method = existingData ? "PUT" : "POST";
@@ -498,7 +515,28 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                 <FormItem>
                   <FormLabel>商品名称</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="输入商品名称" />
+                    <AutocompleteInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      onSelect={(suggestion) => {
+                        // 手动选择建议时的填充
+                        form.setValue("itemName", suggestion.itemName, { shouldValidate: true });
+                        form.setValue("itemNumber", suggestion.itemNumber, { shouldValidate: true });
+                        if (suggestion.itemType) {
+                          form.setValue("itemType", suggestion.itemType, { shouldValidate: true });
+                        }
+                      }}
+                      onAutoFill={(suggestion) => {
+                        // 自动填充时的回调
+                        form.setValue("itemNumber", suggestion.itemNumber);
+                        if (suggestion.itemType) {
+                          form.setValue("itemType", suggestion.itemType);
+                        }
+                      }}
+                      placeholder="输入商品名称，失去焦点时自动补充货号"
+                      type="name"
+                      autoFillOnBlur={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -528,7 +566,28 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                 <FormItem>
                   <FormLabel>货号</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="输入货号" />
+                    <AutocompleteInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      onSelect={(suggestion) => {
+                        // 手动选择建议时的填充
+                        form.setValue("itemNumber", suggestion.itemNumber, { shouldValidate: true });
+                        form.setValue("itemName", suggestion.itemName, { shouldValidate: true });
+                        if (suggestion.itemType) {
+                          form.setValue("itemType", suggestion.itemType, { shouldValidate: true });
+                        }
+                      }}
+                      onAutoFill={(suggestion) => {
+                        // 自动填充时的回调
+                        form.setValue("itemName", suggestion.itemName);
+                        if (suggestion.itemType) {
+                          form.setValue("itemType", suggestion.itemType);
+                        }
+                      }}
+                      placeholder="输入货号，失去焦点时自动补充商品名称"
+                      type="number"
+                      autoFillOnBlur={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1214,16 +1273,16 @@ export function TransactionForm({ existingData, onSuccess }: TransactionFormProp
                     const otherFeesTotal = form.watch("otherFees").reduce((sum, fee) => {
                       const amount = parseFloat(fee.amount || "0");
                       const currency = fee.currency || "JPY";
-                      const exchangeRate = currency === "JPY" ? 0.05 : 1;
-                      return sum + (amount * exchangeRate);
+                      const exchangeRate = parseFloat(form.watch("soldPriceExchangeRate") || "0.05");
+                      return sum + (currency === "JPY" ? amount * exchangeRate : amount);
                     }, 0);
                     const soldPrice = parseFloat(form.watch("soldPrice") || "0");
-                    const soldPriceCurrency = form.watch("soldPriceCurrency") || "JPY";
                     const soldPriceExchangeRate = parseFloat(form.watch("soldPriceExchangeRate") || "0.05");
                     const soldPriceCNY = soldPrice * soldPriceExchangeRate;
                     const totalCost = purchasePrice + domesticShipping + internationalShipping + otherFeesTotal;
                     const netProfit = soldPriceCNY - totalCost;
-                    const profitMargin = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+                    // 修正：利润率 = 利润 / 售价 * 100%（而不是利润 / 成本）
+                    const profitMargin = soldPriceCNY > 0 ? (netProfit / soldPriceCNY) * 100 : 0;
                     return `${profitMargin.toFixed(1)}%`;
                   })()}
                 </div>
