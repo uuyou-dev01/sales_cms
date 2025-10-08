@@ -10,6 +10,9 @@ import { EmojiIcons } from '@/components/emoji-icons';
 import { STATUS_CONFIG } from '@/lib/constants';
 import { format } from 'date-fns';
 import { StockManagement } from '@/components/stock-management';
+import { EditSKUForm } from '@/components/edit-sku-form';
+import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/safe-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface SKUPageProps {
   params: {
@@ -33,9 +36,12 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function SKUDetailPage({ params }: SKUPageProps) {
+  const { toast } = useToast();
   const [allItems, setAllItems] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [itemNumber, setItemNumber] = React.useState<string>('');
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
 
   // 获取数据
   const fetchData = React.useCallback(async () => {
@@ -58,6 +64,60 @@ export default function SKUDetailPage({ params }: SKUPageProps) {
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // 删除SKU处理函数
+  const handleDeleteSKU = async () => {
+    if (!window.confirm('确定要删除这个SKU吗？此操作不可撤销。')) {
+      return;
+    }
+
+    // 检查是否有交易记录
+    const hasTransactions = skuItems.some(item => 
+      item.transactions && item.transactions.length > 0
+    );
+
+    if (hasTransactions) {
+      toast({
+        title: "无法删除",
+        description: "该SKU存在交易记录，无法删除。请先删除相关交易记录。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeleteLoading(true);
+
+    try {
+      // 删除所有相同货号的SKU
+      for (const item of skuItems) {
+        const response = await fetch(`/api/items/delete-sku?itemId=${item.itemId}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '删除失败');
+        }
+      }
+
+      toast({
+        title: "删除成功",
+        description: `SKU ${itemNumber} 已成功删除`,
+      });
+
+      // 返回到商品列表页面
+      window.location.href = '/items';
+    } catch (error) {
+      console.error('删除SKU失败:', error);
+      toast({
+        title: "删除失败",
+        description: error instanceof Error ? error.message : "未知错误",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -209,6 +269,32 @@ export default function SKUDetailPage({ params }: SKUPageProps) {
           </div>
         </div>
         <div className="flex gap-3">
+          <Button 
+            variant="outline"
+            onClick={() => setEditDialogOpen(true)}
+            className="gap-2"
+          >
+            <span className="text-lg">{EmojiIcons.Edit}</span>
+            编辑SKU
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={handleDeleteSKU}
+            disabled={deleteLoading}
+            className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            {deleteLoading ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                删除中...
+              </>
+            ) : (
+              <>
+                <span className="text-lg">{EmojiIcons.Trash2}</span>
+                删除SKU
+              </>
+            )}
+          </Button>
           <Button variant="outline" asChild>
             <Link href="/items">
               <span className="text-lg mr-2">{EmojiIcons.ArrowLeft}</span>
@@ -386,6 +472,34 @@ export default function SKUDetailPage({ params }: SKUPageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* 编辑SKU对话框 */}
+      <SafeDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>编辑SKU - {representativeItem.itemName}</DialogTitle>
+          </DialogHeader>
+          <EditSKUForm
+            initialData={{
+              itemId: representativeItem.itemId,
+              itemName: representativeItem.itemName,
+              itemNumber: representativeItem.itemNumber,
+              itemType: representativeItem.itemType,
+              itemBrand: representativeItem.itemBrand,
+              itemCondition: representativeItem.itemCondition,
+              itemColor: representativeItem.itemColor,
+              itemSize: representativeItem.itemSize,
+              itemRemarks: representativeItem.itemRemarks,
+              photos: representativeItem.photos,
+            }}
+            onSuccess={() => {
+              setEditDialogOpen(false);
+              fetchData(); // 重新获取数据
+            }}
+            onCancel={() => setEditDialogOpen(false)}
+          />
+        </DialogContent>
+      </SafeDialog>
     </div>
   );
 }

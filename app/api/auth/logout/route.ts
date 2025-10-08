@@ -5,7 +5,7 @@ import { ApiResponse } from '@/lib/types';
 export async function POST() {
   try {
     // 清除认证Cookie
-    clearAuthCookie();
+    await clearAuthCookie();
 
     return NextResponse.json<ApiResponse>({
       success: true,

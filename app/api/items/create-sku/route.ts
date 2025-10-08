@@ -40,6 +40,11 @@ export async function POST(request: Request) {
         itemRemarks: data.itemRemarks || "",
         photos: data.photos || [],
         
+        // 潮玩相关字段
+        toyCharacterId: data.toyCharacterId || null,
+        toyVariant: data.toyVariant || null,
+        toyCondition: data.toyCondition || null,
+        
         // 仓库位置（如果提供）
         warehousePositionId: data.warehousePositionId || null,
         position: data.position || null,

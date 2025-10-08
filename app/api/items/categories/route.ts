@@ -8,6 +8,8 @@ const ITEM_TYPE_CONFIG = {
   "包包": { icon: "👜", color: "bg-purple-100 text-purple-800" },
   "配饰": { icon: "💍", color: "bg-pink-100 text-pink-800" },
   "电子产品": { icon: "📱", color: "bg-orange-100 text-orange-800" },
+  "3C&配件": { icon: "📱", color: "bg-orange-100 text-orange-800" },
+  "潮玩类": { icon: "🧸", color: "bg-yellow-100 text-yellow-800" },
   "其他": { icon: "📦", color: "bg-gray-100 text-gray-800" },
 };
 
@@ -25,18 +27,7 @@ export async function GET() {
       soldValue: number;
     }>();
 
-    // 初始化所有类型
-    Object.keys(ITEM_TYPE_CONFIG).forEach(type => {
-      categoryStats.set(type, {
-        total: 0,
-        inStock: 0,
-        sold: 0,
-        totalValue: 0,
-        soldValue: 0,
-      });
-    });
-
-    // 统计数据
+    // 统计数据 - 动态发现所有分类
     allItems.forEach(item => {
       const itemType = item.itemType || "其他";
       const transaction = item.transactions?.[0];
@@ -66,12 +57,15 @@ export async function GET() {
       }
     });
 
-    // 转换为数组格式并添加配置信息
-    const categories = Array.from(categoryStats.entries()).map(([type, stats]) => ({
-      type,
-      ...stats,
-      config: ITEM_TYPE_CONFIG[type as keyof typeof ITEM_TYPE_CONFIG] || ITEM_TYPE_CONFIG["其他"],
-    })).sort((a, b) => b.total - a.total); // 按商品总数排序
+    // 转换为数组格式并添加配置信息，只显示有商品的分类
+    const categories = Array.from(categoryStats.entries())
+      .filter(([type, stats]) => stats.total > 0) // 只显示有商品的分类
+      .map(([type, stats]) => ({
+        type,
+        ...stats,
+        config: ITEM_TYPE_CONFIG[type as keyof typeof ITEM_TYPE_CONFIG] || ITEM_TYPE_CONFIG["其他"],
+      }))
+      .sort((a, b) => b.total - a.total); // 按商品总数排序
 
     return NextResponse.json({
       success: true,

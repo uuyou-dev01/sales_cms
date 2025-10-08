@@ -14,6 +14,7 @@ import { useSearchParams } from "next/navigation";
 import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/safe-dialog";
 import { TransactionForm } from "@/components/add-new-items";
 import { SmartSKUForm } from "@/components/smart-sku-form";
+import { ToySeriesCard } from "@/components/toy-series-card";
 
 // 按货号聚合的商品数据接口
 interface GroupedItem {
@@ -49,6 +50,31 @@ interface GroupedItem {
     }>;
   }>;
   photos: string[];
+  latestPurchaseDate: string;
+  oldestPurchaseDate: string;
+}
+
+// 潮玩系列聚合数据接口
+interface ToySeriesGrouped {
+  seriesId: string;
+  seriesName: string;
+  brandName: string;
+  seriesImage?: string;
+  description?: string;
+  totalItems: number;
+  inStockCount: number;
+  soldCount: number;
+  totalPurchaseValue: number;
+  totalSoldValue: number;
+  totalProfit: number;
+  averageProfitRate: number;
+  characters: Array<{
+    characterName: string;
+    variant: string;
+    count: number;
+    inStock: number;
+    sold: number;
+  }>;
   latestPurchaseDate: string;
   oldestPurchaseDate: string;
 }
@@ -197,6 +223,7 @@ export default function ItemsPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [items, setItems] = React.useState<GroupedItem[]>([]);
+  const [toySeries, setToySeries] = React.useState<ToySeriesGrouped[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [page, setPage] = React.useState(1);
@@ -232,6 +259,7 @@ export default function ItemsPage() {
   const fetchItems = React.useCallback(async () => {
     setLoading(true);
     try {
+      // 并行获取普通商品和潮玩系列数据
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
@@ -240,20 +268,48 @@ export default function ItemsPage() {
         ...(categoryFilter !== "all" ? { itemType: categoryFilter } : {}),
       });
 
-      const response = await fetch(`/api/items/grouped?${params.toString()}`);
+      // 根据筛选条件决定是否获取潮玩数据
+      const shouldFetchToys = categoryFilter === "all" || categoryFilter === "潮玩类";
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const requests = [fetch(`/api/items/grouped?${params.toString()}`)];
+      if (shouldFetchToys) {
+        requests.push(fetch(`/api/toys/series-grouped?${params.toString()}`));
       }
 
-      const data = await response.json();
+      const responses = await Promise.all(requests);
+      const itemsResponse = responses[0];
+      const toySeriesResponse = responses[1];
       
-      if (data && data.items) {
-        setItems(data.items);
-        setTotal(data.total || 0);
+      if (!itemsResponse.ok) {
+        throw new Error(`HTTP error! status: ${itemsResponse.status}`);
+      }
+
+      const itemsData = await itemsResponse.json();
+      const toySeriesData = toySeriesResponse?.ok ? await toySeriesResponse.json() : { success: false, data: [] };
+      
+      if (itemsData && itemsData.items) {
+        // 如果筛选潮玩类，只显示潮玩系列，不显示单个商品
+        // 如果筛选其他类型，过滤掉潮玩类商品
+        // 如果显示全部，过滤掉潮玩类商品（因为它们会在系列聚合中显示）
+        let filteredItems = itemsData.items;
+        if (categoryFilter === "潮玩类") {
+          filteredItems = []; // 潮玩类只显示系列聚合，不显示单个商品
+        } else {
+          filteredItems = itemsData.items.filter((item: GroupedItem) => item.itemType !== "潮玩类");
+        }
+        
+        setItems(filteredItems);
+        setTotal(itemsData.total || 0);
       } else {
         setItems([]);
         setTotal(0);
+      }
+
+      // 设置潮玩系列数据
+      if (shouldFetchToys && toySeriesData && toySeriesData.success && toySeriesData.data) {
+        setToySeries(toySeriesData.data);
+      } else {
+        setToySeries([]);
       }
     } catch (error) {
       console.error("获取商品数据失败:", error);
@@ -392,23 +448,6 @@ export default function ItemsPage() {
               className="pl-10"
             />
           </div>
-          {categoryFilter !== "all" && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">当前分类:</span>
-              <Badge variant="outline" className="gap-1">
-                <span>{categories.find(c => c.type === categoryFilter)?.config.icon}</span>
-                {categoryFilter}
-              </Badge>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setCategoryFilter("all")}
-                className="h-6 w-6 p-0"
-              >
-                ✕
-              </Button>
-            </div>
-          )}
           <Button 
             onClick={() => setAddSkuDialogOpen(true)}
             size="sm"
@@ -464,7 +503,7 @@ export default function ItemsPage() {
               加载中...
             </div>
           </div>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && toySeries.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-500">
               <span className="text-4xl mx-auto mb-4 text-gray-300 block">{EmojiIcons.Package}</span>
@@ -474,6 +513,12 @@ export default function ItemsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {/* 潮玩系列卡片 */}
+            {toySeries.map((series) => (
+              <ToySeriesCard key={series.seriesId} {...series} />
+            ))}
+            
+            {/* 普通商品卡片 */}
             {items.map((item) => (
               <GroupedItemCard key={item.itemNumber} item={item} />
             ))}

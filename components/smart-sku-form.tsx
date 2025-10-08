@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { EmojiIcons } from "@/components/emoji-icons";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToyInfoForm } from "@/components/toy-info-form";
 
 // 商品分类选项
 const ITEM_CATEGORIES = [
@@ -66,6 +67,12 @@ export function SmartSKUForm({ onSuccess }: SmartSKUFormProps) {
     salePrice: "",
     totalStock: "1",
     photos: [] as string[],
+    // 潮玩相关字段
+    toyBrandName: "",
+    toySeriesName: "",
+    toyCharacterName: "",
+    toyVariant: "正常款",
+    toyCondition: "未拆盒",
   });
 
   // 自动补全相关状态
@@ -259,20 +266,99 @@ export function SmartSKUForm({ onSuccess }: SmartSKUFormProps) {
     setIsSubmitting(true);
 
     try {
+      let toyCharacterId = null;
+      
+      // 如果是潮玩类，先创建角色记录
+      if (formData.itemType === "潮玩类" && formData.toyBrandName && formData.toySeriesName && formData.toyCharacterName) {
+        // 获取或创建品牌
+        let brandResponse = await fetch('/api/toys/brands');
+        let brandData = await brandResponse.json();
+        let brand = brandData.brands?.find((b: any) => b.name === formData.toyBrandName);
+        
+        if (!brand) {
+          const createBrandResponse = await fetch('/api/toys/brands', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: formData.toyBrandName })
+          });
+          const createBrandData = await createBrandResponse.json();
+          if (!createBrandData.success) {
+            throw new Error(`创建品牌失败: ${createBrandData.error}`);
+          }
+          brand = createBrandData.brand;
+        }
+
+        // 获取或创建系列
+        let seriesResponse = await fetch(`/api/toys/series?brandId=${brand.id}`);
+        let seriesData = await seriesResponse.json();
+        let series = seriesData.series?.find((s: any) => s.name === formData.toySeriesName);
+        
+        if (!series) {
+          const createSeriesResponse = await fetch('/api/toys/series', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              name: formData.toySeriesName,
+              brandId: brand.id
+            })
+          });
+          const createSeriesData = await createSeriesResponse.json();
+          if (!createSeriesData.success) {
+            throw new Error(`创建系列失败: ${createSeriesData.error}`);
+          }
+          series = createSeriesData.series;
+        }
+
+        // 获取或创建角色
+        let charactersResponse = await fetch(`/api/toys/characters?seriesId=${series.id}`);
+        let charactersData = await charactersResponse.json();
+        let character = charactersData.characters?.find((c: any) => c.name === formData.toyCharacterName);
+        
+        if (!character) {
+          const createCharacterResponse = await fetch('/api/toys/characters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              name: formData.toyCharacterName,
+              seriesId: series.id,
+              rarity: formData.toyVariant === "隐藏款" ? "隐藏" : "普通"
+            })
+          });
+          const createCharacterData = await createCharacterResponse.json();
+          if (!createCharacterData.success) {
+            throw new Error(`创建角色失败: ${createCharacterData.error}`);
+          }
+          character = createCharacterData.character;
+        }
+
+        toyCharacterId = character.id;
+      }
+
       // 构造SKU数据（只包含Item表中存在的字段）
+      // 构建商品名称（潮玩类特殊处理）
+      let finalItemName = formData.itemName;
+      if (formData.itemType === "潮玩类" && formData.toyVariant !== "正常款") {
+        finalItemName = `${formData.itemName} - ${formData.toyVariant}`;
+      } else if (formData.itemColor) {
+        finalItemName = `${formData.itemName} - ${formData.itemColor}`;
+      }
+
       const skuData = {
         itemId: formData.itemId,
-        itemName: formData.itemColor 
-          ? `${formData.itemName} - ${formData.itemColor}`
-          : formData.itemName,
+        itemName: finalItemName,
         itemNumber: formData.itemNumber,
         itemType: formData.itemType,
         itemBrand: "", // 可以从商品名称中提取
-        itemCondition: "全新",
+        itemCondition: formData.itemType === "潮玩类" ? formData.toyCondition : "全新",
         itemColor: formData.itemColor,
         itemSize: "均码", // 默认尺码
         itemRemarks: formData.itemDescription,
         photos: formData.photos,
+        
+        // 潮玩相关字段
+        toyCharacterId: formData.itemType === "潮玩类" ? toyCharacterId : null,
+        toyVariant: formData.itemType === "潮玩类" ? formData.toyVariant : null,
+        toyCondition: formData.itemType === "潮玩类" ? formData.toyCondition : null,
         
         // 仓库位置信息（如果有选择的话）
         warehousePositionId: warehouseDistribution.find(w => w.quantity > 0)?.warehouseId || null,
@@ -493,7 +579,14 @@ export function SmartSKUForm({ onSuccess }: SmartSKUFormProps) {
         </Label>
         <Select
           value={formData.itemType}
-          onValueChange={(value) => setFormData(prev => ({ ...prev, itemType: value }))}
+          onValueChange={(value) => setFormData(prev => ({ 
+            ...prev, 
+            itemType: value,
+            // 如果不是潮玩类，清空潮玩相关字段
+            toyBrandName: value === "潮玩类" ? prev.toyBrandName : "",
+            toySeriesName: value === "潮玩类" ? prev.toySeriesName : "",
+            toyCharacterName: value === "潮玩类" ? prev.toyCharacterName : "",
+          }))}
           required
         >
           <SelectTrigger>
@@ -511,6 +604,29 @@ export function SmartSKUForm({ onSuccess }: SmartSKUFormProps) {
           </SelectContent>
         </Select>
       </div>
+
+      {/* 潮玩信息表单 - 仅当选择潮玩类时显示 */}
+      {formData.itemType === "潮玩类" && (
+        <ToyInfoForm
+          brandName={formData.toyBrandName}
+          seriesName={formData.toySeriesName}
+          characterName={formData.toyCharacterName}
+          toyVariant={formData.toyVariant}
+          toyCondition={formData.toyCondition}
+          onBrandNameChange={(value) => setFormData(prev => ({ ...prev, toyBrandName: value }))}
+          onSeriesNameChange={(value) => setFormData(prev => ({ ...prev, toySeriesName: value }))}
+          onCharacterNameChange={(value) => setFormData(prev => ({ ...prev, toyCharacterName: value }))}
+          onToyVariantChange={(value) => setFormData(prev => ({ ...prev, toyVariant: value }))}
+          onToyConditionChange={(value) => setFormData(prev => ({ ...prev, toyCondition: value }))}
+          onAutoFill={(data) => {
+            setFormData(prev => ({
+              ...prev,
+              itemName: prev.itemName || data.itemName,
+              itemNumber: prev.itemNumber || data.itemNumber,
+            }));
+          }}
+        />
+      )}
 
       {/* 价格信息 */}
       <Card>

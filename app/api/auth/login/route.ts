@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     };
 
     // 设置认证Cookie
-    setAuthCookie(session);
+    await setAuthCookie(session);
 
     // 创建JWT token（用于API调用）
     const token = createJWT({ user: authUser, exp: Math.floor(expires.getTime() / 1000) });

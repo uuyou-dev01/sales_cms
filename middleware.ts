@@ -5,6 +5,7 @@ import type { NextRequest } from 'next/server';
 const protectedRoutes = [
   '/sales',
   '/warehouse',
+  '/toys/series',
   '/test',
   '/test-dialog',
   '/test-fix',
@@ -20,7 +21,15 @@ const protectedRoutes = [
 
 // 不需要认证的API路由（即使在保护路由下）
 const publicApiRoutes = [
-  '/api/items/create-sku'
+  '/api/items/create-sku',
+  '/api/items/update-sku',
+  '/api/items/delete-sku',
+  '/api/items/categories',
+  '/api/toys/brands',
+  '/api/toys/series',
+  '/api/toys/characters',
+  '/api/toys/hierarchy',
+  '/api/toys/series-grouped'
 ];
 
 export function middleware(request: NextRequest) {

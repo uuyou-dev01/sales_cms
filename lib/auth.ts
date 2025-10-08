@@ -40,8 +40,8 @@ export function verifyJWT(token: string): any {
 }
 
 // Cookie相关
-export function setAuthCookie(session: Session): void {
-  const cookieStore = cookies();
+export async function setAuthCookie(session: Session): Promise<void> {
+  const cookieStore = await cookies();
   cookieStore.set('auth-session', JSON.stringify(session), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -51,9 +51,9 @@ export function setAuthCookie(session: Session): void {
   });
 }
 
-export function getAuthCookie(): Session | null {
+export async function getAuthCookie(): Promise<Session | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('auth-session');
     if (!sessionCookie?.value) return null;
     
@@ -68,8 +68,8 @@ export function getAuthCookie(): Session | null {
   }
 }
 
-export function clearAuthCookie(): void {
-  const cookieStore = cookies();
+export async function clearAuthCookie(): Promise<void> {
+  const cookieStore = await cookies();
   cookieStore.delete('auth-session');
 }
 
