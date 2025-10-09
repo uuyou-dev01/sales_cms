@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache';
+import { unstable_cache, revalidateTag } from 'next/cache';
 import { prisma } from './prisma';
 
 // 缓存所有商品数据
@@ -298,4 +298,10 @@ export const getCachedMonths = unstable_cache(
     tags: ['items'],
     revalidate: 3600, // 1小时重新验证
   }
-); 
+);
+
+// 清除商品相关缓存
+export async function clearItemsCache() {
+  revalidateTag('items');
+  revalidateTag('stats');
+} 

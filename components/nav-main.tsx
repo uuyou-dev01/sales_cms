@@ -3,6 +3,7 @@
 import * as React from "react"
 import { type LucideIcon } from "lucide-react"
 import { EmojiIcons } from "@/components/emoji-icons";
+import { ChevronRight } from "lucide-react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -83,7 +84,7 @@ export function NavMain({
                 <SidebarMenuButton tooltip={item.title}>
                   <span className="text-lg">{getIcon(item.title)}</span>
                   <span>{item.title}</span>
-                  <span className="text-lg">{EmojiIcons.ChevronRight}</span>
+                  <ChevronRight className="ml-auto h-4 w-4" />
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -98,7 +99,7 @@ export function NavMain({
                               <CollapsibleTrigger asChild>
                                 <SidebarMenuSubButton>
                                   <span>{subItem.title}</span>
-                                  <span className="text-sm ml-auto">{EmojiIcons.ChevronRight}</span>
+                                  <ChevronRight className="ml-auto h-3 w-3" />
                                 </SidebarMenuSubButton>
                               </CollapsibleTrigger>
                               <CollapsibleContent>

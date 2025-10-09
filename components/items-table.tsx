@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { EmojiIcons } from "@/components/emoji-icons";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { STATUS_CONFIG, TRANSACTION_STATUSES } from "@/lib/constants";
@@ -191,11 +192,11 @@ export function ItemsTable({
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {dateSort === "asc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       ) : dateSort === "desc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -209,11 +210,11 @@ export function ItemsTable({
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {durationSort === "asc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       ) : durationSort === "desc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -311,11 +312,11 @@ export function ItemsTable({
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {priceSort === "asc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       ) : priceSort === "desc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       )}
                     </button>
                   </div>

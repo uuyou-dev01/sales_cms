@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmojiIcons } from '@/components/emoji-icons';
+import { ArrowLeft } from "lucide-react";
 import { STATUS_CONFIG } from '@/lib/constants';
 import { format } from 'date-fns';
 import { StockManagement } from '@/components/stock-management';
@@ -297,7 +298,7 @@ export default function SKUDetailPage({ params }: SKUPageProps) {
           </Button>
           <Button variant="outline" asChild>
             <Link href="/items">
-              <span className="text-lg mr-2">{EmojiIcons.ArrowLeft}</span>
+              <ArrowLeft className="w-4 h-4 mr-2" />
               返回列表
             </Link>
           </Button>

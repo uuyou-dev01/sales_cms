@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import TransactionModal, { TransactionForm } from "@/components/add-new-items";
 import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/safe-dialog";
 import { EmojiIcons } from "@/components/emoji-icons";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import BatchImport from "@/components/batch-import";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
@@ -788,11 +789,11 @@ export default function SalesPage() {
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {dateSort === "asc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       ) : dateSort === "desc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -806,11 +807,11 @@ export default function SalesPage() {
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {durationSort === "asc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       ) : durationSort === "desc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -902,11 +903,11 @@ export default function SalesPage() {
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {priceSort === "asc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       ) : priceSort === "desc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       )}
                     </button>
                   </div>

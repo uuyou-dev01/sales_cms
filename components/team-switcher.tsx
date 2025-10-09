@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { EmojiIcons } from "@/components/emoji-icons"
+import { ChevronsUpDown } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -42,7 +43,7 @@ export function TeamSwitcher({
                 <span className="truncate font-semibold">{activeTeam.name}</span>
                 <span className="truncate text-xs">{activeTeam.plan}</span>
               </div>
-              <span className="text-lg">{EmojiIcons.ChevronsUpDown}</span>
+              <ChevronsUpDown className="ml-auto h-4 w-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

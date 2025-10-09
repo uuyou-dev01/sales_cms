@@ -84,7 +84,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ seriesId
         // 按角色和变体统计
         if (!characterMap.has(characterKey)) {
           characterMap.set(characterKey, {
+            characterId: character.id,
             characterName: character.name,
+            characterImage: character.image,
             variant: item.toyVariant || "正常款",
             count: 0,
             inStock: 0,
@@ -148,6 +150,55 @@ export async function GET(req: Request, { params }: { params: Promise<{ seriesId
       { 
         success: false, 
         error: "获取系列详情失败", 
+        details: error instanceof Error ? error.message : String(error) 
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/toys/series/[seriesId] - 更新系列信息
+export async function PUT(req: Request, { params }: { params: Promise<{ seriesId: string }> }) {
+  try {
+    const { seriesId } = await params;
+    const body = await req.json();
+    const { image, name, description } = body;
+
+    // 检查系列是否存在
+    const existingSeries = await prisma.toySeries.findUnique({
+      where: { id: seriesId }
+    });
+
+    if (!existingSeries) {
+      return NextResponse.json(
+        { success: false, error: "系列不存在" },
+        { status: 404 }
+      );
+    }
+
+    // 更新系列信息
+    const updatedSeries = await prisma.toySeries.update({
+      where: { id: seriesId },
+      data: {
+        ...(image !== undefined && { image }),
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description }),
+        updatedAt: new Date()
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "系列信息更新成功",
+      data: updatedSeries
+    });
+
+  } catch (error) {
+    console.error("更新系列信息失败:", error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: "更新系列信息失败", 
         details: error instanceof Error ? error.message : String(error) 
       },
       { status: 500 }

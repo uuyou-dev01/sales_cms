@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import { EmojiIcons } from "@/components/emoji-icons";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -722,11 +723,11 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                     >
                       {dateSort === "asc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       ) : dateSort === "desc" ? (
-                        <span className="text-lg">{EmojiIcons.ChevronDown}</span>
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <span className="text-lg">{EmojiIcons.ChevronUp}</span>
+                        <ChevronUp className="w-4 h-4" />
                       )}
                     </button>
                   </div>

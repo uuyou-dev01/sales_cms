@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { EmojiIcons } from "@/components/emoji-icons";
+import { Save, X } from "lucide-react";
 
 interface TransactionFormProps {
   itemId: string;
@@ -420,6 +421,7 @@ export function TransactionForm({
       {/* 提交按钮 */}
       <div className="flex justify-end gap-3">
         <Button type="button" variant="outline" onClick={onCancel}>
+          <X className="w-4 h-4 mr-2" />
           取消
         </Button>
         <Button type="submit" disabled={loading} className="min-w-24">
@@ -430,7 +432,7 @@ export function TransactionForm({
             </>
           ) : (
             <>
-              <span className="mr-2">{EmojiIcons.Save}</span>
+              <Save className="w-4 h-4 mr-2" />
               创建{isPurchase ? '采购' : '销售'}记录
             </>
           )}

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { EmojiIcons } from "@/components/emoji-icons";
+import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToyInfoForm } from "@/components/toy-info-form";
@@ -794,7 +795,7 @@ export function SmartSKUForm({ onSuccess }: SmartSKUFormProps) {
             </>
           ) : (
             <>
-              <span className="text-lg mr-2">{EmojiIcons.Plus}</span>
+              <Plus className="w-4 h-4 mr-2" />
               创建SKU
             </>
           )}

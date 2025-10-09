@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { EmojiIcons } from "@/components/emoji-icons";
+import { Save, X, Package } from "lucide-react";
 
 interface StockAdjustmentProps {
   itemId: string;
@@ -110,7 +111,7 @@ export function StockAdjustment({
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <span className="text-2xl">📦</span>
+            <Package className="w-6 h-6 text-blue-600" />
             库存调整 - {characterName} {variant}
           </CardTitle>
         </CardHeader>
@@ -234,6 +235,7 @@ export function StockAdjustment({
       {/* 提交按钮 */}
       <div className="flex justify-end gap-3">
         <Button type="button" variant="outline" onClick={onCancel}>
+          <X className="w-4 h-4 mr-2" />
           取消
         </Button>
         <Button type="submit" disabled={loading} className="min-w-24">
@@ -244,7 +246,7 @@ export function StockAdjustment({
             </>
           ) : (
             <>
-              <span className="mr-2">{EmojiIcons.Save}</span>
+              <Save className="w-4 h-4 mr-2" />
               确认调整
             </>
           )}

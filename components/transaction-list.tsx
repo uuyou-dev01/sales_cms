@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmojiIcons } from "@/components/emoji-icons";
 import { format } from "date-fns";
+import { Edit, Trash2, X } from "lucide-react";
+import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/safe-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Transaction {
   id: string;
@@ -40,8 +43,11 @@ export function TransactionList({
   variant,
   onClose,
 }: TransactionListProps) {
+  const { toast } = useToast();
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null);
   const [stats, setStats] = React.useState({
     totalPurchases: 0,
     totalSales: 0,
@@ -152,6 +158,41 @@ export function TransactionList({
       case "在途（国际）": return "bg-orange-100 text-orange-800";
       case "交易中": return "bg-purple-100 text-purple-800";
       default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    if (!confirm("确定要删除这条交易记录吗？")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/transactions/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "删除成功",
+          description: "交易记录已删除",
+        });
+        fetchTransactions(); // 刷新数据
+      } else {
+        throw new Error("删除失败");
+      }
+    } catch (error) {
+      toast({
+        title: "删除失败",
+        description: error instanceof Error ? error.message : "删除交易记录失败",
+        variant: "destructive",
+      });
     }
   };
 
@@ -271,9 +312,29 @@ export function TransactionList({
                           {format(new Date(transaction.date), 'yyyy-MM-dd')}
                         </span>
                       </div>
-                      <Badge className={getStatusColor(transaction.orderStatus)}>
-                        {transaction.orderStatus}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(transaction.orderStatus)}>
+                          {transaction.orderStatus}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleEditTransaction(transaction)}
+                          title="编辑交易记录"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteTransaction(transaction.id)}
+                          title="删除交易记录"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 text-sm">
@@ -331,6 +392,295 @@ export function TransactionList({
           )}
         </CardContent>
       </Card>
+
+      {/* 编辑交易记录对话框 */}
+      <SafeDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-blue-600" />
+              编辑{editingTransaction?.type === 'purchase' ? '采购' : '销售'}记录
+            </DialogTitle>
+          </DialogHeader>
+          {editingTransaction && (
+            <TransactionEditForm
+              transaction={editingTransaction}
+              itemId={itemId}
+              itemName={itemName}
+              characterName={characterName}
+              variant={variant}
+              onSuccess={() => {
+                setEditDialogOpen(false);
+                setEditingTransaction(null);
+                fetchTransactions(); // 刷新数据
+                toast({
+                  title: "更新成功",
+                  description: "交易记录已更新",
+                });
+              }}
+              onCancel={() => {
+                setEditDialogOpen(false);
+                setEditingTransaction(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </SafeDialog>
     </div>
+  );
+}
+
+// 交易记录编辑表单组件
+interface TransactionEditFormProps {
+  transaction: Transaction;
+  itemId: string;
+  itemName: string;
+  characterName: string;
+  variant: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+function TransactionEditForm({
+  transaction,
+  itemId,
+  itemName,
+  characterName,
+  variant,
+  onSuccess,
+  onCancel,
+}: TransactionEditFormProps) {
+  const { toast } = useToast();
+  const [loading, setLoading] = React.useState(false);
+  const [formData, setFormData] = React.useState({
+    amount: transaction.amount.toString(),
+    currency: transaction.currency,
+    exchangeRate: transaction.exchangeRate.toString(),
+    date: transaction.date,
+    platform: transaction.platform,
+    orderStatus: transaction.orderStatus,
+    trackingNumber: transaction.trackingNumber || "",
+    domesticShipping: transaction.domesticShipping.toString(),
+    internationalShipping: transaction.internationalShipping.toString(),
+    otherFees: transaction.otherFees || "",
+    remarks: transaction.remarks || "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      toast({
+        title: "请填写有效的金额",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/transactions/update`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transactionId: transaction.id,
+          ...formData,
+          amount: parseFloat(formData.amount),
+          exchangeRate: parseFloat(formData.exchangeRate),
+          domesticShipping: parseFloat(formData.domesticShipping),
+          internationalShipping: parseFloat(formData.internationalShipping),
+        }),
+      });
+
+      if (response.ok) {
+        onSuccess?.();
+      } else {
+        throw new Error("更新失败");
+      }
+    } catch (error) {
+      toast({
+        title: "更新失败",
+        description: error instanceof Error ? error.message : "更新交易记录失败",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isPurchase = transaction.type === 'purchase';
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* 基本信息 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">基本信息</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">金额</label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                value={formData.amount}
+                onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">货币</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                value={formData.currency}
+                onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+              >
+                <option value="CNY">人民币</option>
+                <option value="JPY">日元</option>
+                <option value="USD">美元</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">汇率</label>
+              <input
+                type="number"
+                step="0.0001"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                value={formData.exchangeRate}
+                onChange={(e) => setFormData(prev => ({ ...prev, exchangeRate: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">日期</label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">平台</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                value={formData.platform}
+                onChange={(e) => setFormData(prev => ({ ...prev, platform: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">状态</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                value={formData.orderStatus}
+                onChange={(e) => setFormData(prev => ({ ...prev, orderStatus: e.target.value }))}
+              >
+                {isPurchase ? (
+                  <>
+                    <option value="在途（国内）">在途（国内）</option>
+                    <option value="在途（国际）">在途（国际）</option>
+                    <option value="在库">在库</option>
+                    <option value="已上架">已上架</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="交易中">交易中</option>
+                    <option value="已售出">已售出</option>
+                    <option value="已完成">已完成</option>
+                    <option value="已退货">已退货</option>
+                  </>
+                )}
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 运费信息 - 只在采购时显示 */}
+      {isPurchase && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">运费信息</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">国内运费</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.domesticShipping}
+                  onChange={(e) => setFormData(prev => ({ ...prev, domesticShipping: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">国际运费</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.internationalShipping}
+                  onChange={(e) => setFormData(prev => ({ ...prev, internationalShipping: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">快递单号</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.trackingNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 备注 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">备注</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <textarea
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            rows={3}
+            value={formData.remarks}
+            onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
+            placeholder="输入备注信息..."
+          />
+        </CardContent>
+      </Card>
+
+      {/* 提交按钮 */}
+      <div className="flex justify-end gap-3">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          <X className="w-4 h-4 mr-2" />
+          取消
+        </Button>
+        <Button type="submit" disabled={loading} className="min-w-24">
+          {loading ? (
+            <>
+              <span className="animate-spin mr-2">{EmojiIcons.RefreshCw}</span>
+              更新中...
+            </>
+          ) : (
+            <>
+              <Edit className="w-4 h-4 mr-2" />
+              更新记录
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
   );
 }

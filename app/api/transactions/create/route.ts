@@ -60,6 +60,31 @@ export async function POST(req: NextRequest) {
       transactionData.domesticTrackingNumber = trackingNumber || "";
     } else {
       // 销售记录
+      // 获取该商品的第一次采购记录作为成本价
+      const firstPurchase = await prisma.transaction.findFirst({
+        where: { 
+          itemId,
+          purchaseDate: { not: null }
+        },
+        orderBy: { purchaseDate: 'asc' }
+      });
+
+      // 如果有采购记录，使用采购价格；否则使用默认值
+      if (firstPurchase) {
+        transactionData.purchasePrice = firstPurchase.purchasePrice;
+        transactionData.purchasePriceCurrency = firstPurchase.purchasePriceCurrency;
+        transactionData.purchasePriceExchangeRate = firstPurchase.purchasePriceExchangeRate;
+        transactionData.domesticShipping = firstPurchase.domesticShipping || "0";
+        transactionData.internationalShipping = firstPurchase.internationalShipping || "0";
+      } else {
+        // 如果没有采购记录，使用默认值
+        transactionData.purchasePrice = "0";
+        transactionData.purchasePriceCurrency = "CNY";
+        transactionData.purchasePriceExchangeRate = "1";
+        transactionData.domesticShipping = "0";
+        transactionData.internationalShipping = "0";
+      }
+
       transactionData.soldDate = new Date(date || new Date());
       transactionData.soldPrice = (unitPrice * quantity).toString();
       transactionData.soldPriceCurrency = currency || "JPY";

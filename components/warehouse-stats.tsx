@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import { EmojiIcons } from "@/components/emoji-icons";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -132,7 +133,7 @@ export function WarehouseStats() {
             className="gap-2"
           >
             管理仓库
-            <span className="text-lg">{EmojiIcons.ArrowRight}</span>
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </CardHeader>

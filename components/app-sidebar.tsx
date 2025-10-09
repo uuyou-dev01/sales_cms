@@ -17,6 +17,8 @@ import { NavMain } from "./nav-main"
 import { NavProjects } from "./nav-projects"
 import { NavUser } from "./nav-user"
 import { TeamSwitcher } from "./team-switcher"
+import { PriceCalculator } from "./price-calculator"
+import { InventoryCounter } from "./mini-program/inventory-counter"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
 
 // 动态数据获取函数
@@ -320,6 +322,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
+        <div className="px-2 pb-2 space-y-1">
+          <PriceCalculator />
+          <InventoryCounter />
+        </div>
         <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />

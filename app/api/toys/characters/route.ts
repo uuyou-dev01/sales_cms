@@ -104,3 +104,53 @@ export async function POST(request: Request) {
     );
   }
 }
+
+// 更新潮玩角色
+export async function PUT(request: Request) {
+  try {
+    const data = await request.json();
+    const { characterId, name, description, image, rarity } = data;
+
+    if (!characterId) {
+      return NextResponse.json({ error: '角色ID不能为空' }, { status: 400 });
+    }
+
+    // 检查角色是否存在
+    const existingCharacter = await prisma.toyCharacter.findUnique({
+      where: { id: characterId }
+    });
+
+    if (!existingCharacter) {
+      return NextResponse.json({ error: '角色不存在' }, { status: 404 });
+    }
+
+    // 更新角色
+    const character = await prisma.toyCharacter.update({
+      where: { id: characterId },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description }),
+        ...(image !== undefined && { image }),
+        ...(rarity !== undefined && { rarity }),
+        updatedAt: new Date()
+      },
+      include: {
+        series: {
+          include: {
+            brand: true
+          }
+        }
+      }
+    });
+
+    revalidateTag('toy-characters');
+
+    return NextResponse.json({ success: true, message: '角色更新成功', character });
+  } catch (error) {
+    console.error('更新潮玩角色失败:', error);
+    return NextResponse.json(
+      { error: '更新潮玩角色失败', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
