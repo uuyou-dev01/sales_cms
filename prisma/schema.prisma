@@ -25,14 +25,13 @@ model Item {
   position            String?
   warehousePositionId String?
   accessories         String?
-  // 潮玩相关字段
-  toyCharacterId      String?            // 潮玩角色ID（仅潮玩类商品使用）
-  toyVariant          String?            // 潮玩变体，如 "正常款", "隐藏款", "特别色"
-  toyCondition        String?            // 潮玩特有成色，如 "未拆盒", "已拆盒", "无盒"
-  warehousePosition   WarehousePosition? @relation(fields: [warehousePositionId], references: [id])
+  toyCharacterId      String?
+  toyCondition        String?
+  toyVariant          String?
   toyCharacter        ToyCharacter?      @relation(fields: [toyCharacterId], references: [id])
-  transactions        Transaction[]
+  warehousePosition   WarehousePosition? @relation(fields: [warehousePositionId], references: [id])
   stockAdjustments    StockAdjustment[]
+  transactions        Transaction[]
 }
 
 model Transaction {
@@ -135,69 +134,144 @@ model User {
   @@index([storeId])
 }
 
+model ToyBrand {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  logo        String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  series      ToySeries[]
+}
+
+model ToySeries {
+  id          String         @id @default(cuid())
+  name        String
+  brandId     String
+  description String?
+  image       String?
+  releaseDate DateTime?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  characters  ToyCharacter[]
+  brand       ToyBrand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, name])
+}
+
+model ToyCharacter {
+  id          String    @id @default(cuid())
+  name        String
+  seriesId    String
+  description String?
+  image       String?
+  rarity      String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  items       Item[]
+  series      ToySeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  skus        ToySKU[]
+
+  @@unique([seriesId, name])
+}
+
+model StockAdjustment {
+  id             String   @id @default(cuid())
+  itemId         String
+  adjustmentType String
+  quantity       Int
+  previousStock  Int
+  newStock       Int
+  reason         String
+  remarks        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  item           Item     @relation(fields: [itemId], references: [itemId])
+}
+
+model ToySKU {
+  id               String             @id @default(cuid())
+  characterId      String
+  name             String
+  description      String?
+  image            String?
+  currentStock     Int                @default(0)
+  suggestedPrice   Decimal
+  costPrice        Decimal
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  character        ToyCharacter       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  inventoryBatches InventoryBatch[]
+  purchaseOrders   ToyPurchaseOrder[]
+  salesRecords     ToySalesRecord[]
+
+  @@unique([characterId, name])
+}
+
+model InventoryBatch {
+  id              String            @id @default(cuid())
+  skuId           String
+  quantity        Int
+  inboundDate     DateTime
+  purchaseOrderId String?
+  unitCostPrice   Decimal
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  purchaseOrder   ToyPurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  sku             ToySKU            @relation(fields: [skuId], references: [id], onDelete: Cascade)
+}
+
+model ToyPurchaseOrder {
+  id                  String            @id @default(cuid())
+  skuId               String
+  domesticOrderNumber String
+  status              ToyPurchaseStatus @default(DOMESTIC_IN_TRANSIT)
+  weight              Decimal
+  quantity            Int
+  amount              Decimal
+  batch               String?
+  shippingDate        DateTime
+  arrivalTime         DateTime?
+  shippingCost        Decimal?
+  totalShippingAmount Decimal?
+  totalShippingWeight Decimal?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  inventoryBatches    InventoryBatch[]
+  sku                 ToySKU            @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([skuId])
+  @@index([status])
+}
+
+model ToySalesRecord {
+  id        String   @id @default(cuid())
+  skuId     String
+  date      DateTime
+  amount    Decimal
+  quantity  Int
+  cost      Decimal
+  profit    Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sku       ToySKU   @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@index([skuId])
+  @@index([date])
+}
+
 enum UserRole {
   ADMIN
   USER
   VIEWER
 }
 
-// 潮玩品牌管理
-model ToyBrand {
-  id          String      @id @default(cuid())
-  name        String      @unique // 品牌名称，如 "泡泡玛特"
-  description String?     // 品牌描述
-  logo        String?     // 品牌logo
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  series      ToySeries[] // 该品牌下的系列
-}
-
-// 潮玩系列管理
-model ToySeries {
-  id          String        @id @default(cuid())
-  name        String        // 系列名称，如 "迪士尼family系列"
-  brandId     String        // 所属品牌ID
-  description String?       // 系列描述
-  image       String?       // 系列图片
-  releaseDate DateTime?     // 发布日期
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  brand       ToyBrand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  characters  ToyCharacter[] // 该系列下的角色
-  
-  @@unique([brandId, name]) // 同一品牌下系列名不能重复
-}
-
-// 潮玩角色/款式管理
-model ToyCharacter {
-  id          String    @id @default(cuid())
-  name        String    // 角色名称，如 "米奇", "米妮", "高飞"
-  seriesId    String    // 所属系列ID
-  description String?   // 角色描述
-  image       String?   // 角色图片
-  rarity      String?   // 稀有度，如 "普通", "隐藏", "特别款"
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  series      ToySeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
-  items       Item[]    // 该角色的具体商品
-  
-  @@unique([seriesId, name]) // 同一系列下角色名不能重复
-}
-
-// 库存调整记录
-model StockAdjustment {
-  id             String   @id @default(cuid())
-  itemId         String   // 商品ID
-  adjustmentType String   // 调整类型: "set", "add", "subtract"
-  quantity       Int      // 调整数量
-  previousStock  Int      // 调整前库存
-  newStock       Int      // 调整后库存
-  reason         String   // 调整原因
-  remarks        String?  // 备注
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  item           Item     @relation(fields: [itemId], references: [itemId])
+enum ToyPurchaseStatus {
+  DOMESTIC_IN_TRANSIT
+  JAPAN_IN_TRANSIT
+  JAPAN_ARRIVED
 }

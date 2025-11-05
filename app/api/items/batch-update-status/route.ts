@@ -20,20 +20,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 批量更新商品状态
-    const updateResult = await prisma.item.updateMany({
-      where: {
-        itemId: {
-          in: itemIds
-        }
-      },
-      data: {
-        transactionStatues: newStatus
-      }
-    });
-
-    // 同时更新对应的交易记录状态
-    await prisma.transaction.updateMany({
+    // 批量更新交易记录状态
+    const updateResult = await prisma.transaction.updateMany({
       where: {
         itemId: {
           in: itemIds

@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       writeFileSync(filepath, buffer);
       urls.push(`/uploads/${filename}`);
     }
-    return NextResponse.json({ urls });
+    return NextResponse.json({ success: true, url: urls[0] });
   } catch (error) {
     console.error("图片上传错误:", error || "未知错误");
     return NextResponse.json({ error: "上传失败" }, { status: 500 });

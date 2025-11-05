@@ -1,97 +1,102 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { revalidateTag } from 'next/cache';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// 获取所有潮玩系列
-export async function GET(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const brandId = searchParams.get('brandId');
+    const body = await request.json();
+    const { name, image, brandName, skus } = body;
 
-    const where = brandId ? { brandId, isActive: true } : { isActive: true };
+    // 验证必填字段
+    if (!name || !brandName) {
+      return NextResponse.json(
+        { success: false, message: "系列名称和品牌名称为必填项" },
+        { status: 400 }
+      );
+    }
 
-    const series = await prisma.toySeries.findMany({
-      where,
-      include: {
-        brand: true,
-        characters: {
-          where: { isActive: true },
-          include: {
-            _count: {
-              select: { items: true }
-            }
-          }
+    // 使用事务创建品牌、系列、角色和SKU
+    const result = await prisma.$transaction(async (tx) => {
+      // 查找或创建品牌
+      let brand = await tx.toyBrand.findFirst({
+        where: { name: brandName },
+      });
+
+      if (!brand) {
+        brand = await tx.toyBrand.create({
+          data: {
+            name: brandName,
+            description: "",
+            logo: "",
+            isActive: true,
+          },
+        });
+      }
+
+      // 创建系列
+      const series = await tx.toySeries.create({
+        data: {
+          name,
+          brandId: brand.id,
+          description: "",
+          image: image || "",
+          isActive: true,
         },
-        _count: {
-          select: { characters: true }
+      });
+
+      // 创建角色和SKU
+      const createdSkus = [];
+      for (const skuData of skus || []) {
+        // 创建角色（角色名称就是SKU名称）
+        const character = await tx.toyCharacter.create({
+          data: {
+            name: skuData.name,
+            seriesId: series.id,
+            description: skuData.variant || "普通款",
+            isActive: true,
+          },
+        });
+
+        // 创建SKU
+        const sku = await tx.toySKU.create({
+          data: {
+            name: skuData.name,
+            characterId: character.id,
+            description: "",
+            image: skuData.imageUrl || "",
+            currentStock: skuData.stock || 0,
+            costPrice: skuData.costPrice || 0,
+            suggestedPrice: skuData.price || 0,
+            isActive: true,
+          },
+        });
+
+        // 如果有初始库存，创建库存批次
+        if (skuData.stock > 0) {
+          await tx.inventoryBatch.create({
+            data: {
+              skuId: sku.id,
+              quantity: skuData.stock,
+              inboundDate: new Date(),
+              unitCostPrice: skuData.costPrice || 0,
+            },
+          });
         }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
 
-    return NextResponse.json({ success: true, series });
-  } catch (error) {
-    console.error('获取潮玩系列失败:', error);
-    return NextResponse.json(
-      { error: '获取潮玩系列失败', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
-
-// 创建新的潮玩系列
-export async function POST(request: Request) {
-  try {
-    const data = await request.json();
-    const { name, brandId, description, image, releaseDate } = data;
-
-    if (!name || !brandId) {
-      return NextResponse.json({ error: '系列名称和品牌不能为空' }, { status: 400 });
-    }
-
-    // 检查品牌是否存在
-    const brand = await prisma.toyBrand.findUnique({
-      where: { id: brandId }
-    });
-
-    if (!brand) {
-      return NextResponse.json({ error: '指定的品牌不存在' }, { status: 400 });
-    }
-
-    // 检查同一品牌下系列名是否已存在
-    const existingSeries = await prisma.toySeries.findUnique({
-      where: {
-        brandId_name: {
-          brandId,
-          name
-        }
+        createdSkus.push(sku);
       }
+
+      return { series, brand, skus: createdSkus };
     });
 
-    if (existingSeries) {
-      return NextResponse.json({ error: '该品牌下已存在同名系列' }, { status: 400 });
-    }
-
-    const series = await prisma.toySeries.create({
-      data: {
-        name,
-        brandId,
-        description,
-        image,
-        releaseDate: releaseDate ? new Date(releaseDate) : null,
-      },
-      include: {
-        brand: true
-      }
+    return NextResponse.json({
+      success: true,
+      data: result.series,
+      message: "系列创建成功",
     });
-
-    revalidateTag('toy-series');
-
-    return NextResponse.json({ success: true, message: '系列创建成功', series });
   } catch (error) {
-    console.error('创建潮玩系列失败:', error);
+    console.error("创建系列失败:", error);
     return NextResponse.json(
-      { error: '创建潮玩系列失败', details: error instanceof Error ? error.message : String(error) },
+      { success: false, message: "创建系列失败" },
       { status: 500 }
     );
   }

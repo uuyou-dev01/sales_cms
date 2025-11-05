@@ -15,6 +15,7 @@ import { SafeDialog, DialogContent, DialogHeader, DialogTitle } from "@/componen
 import { TransactionForm } from "@/components/add-new-items";
 import { SmartSKUForm } from "@/components/smart-sku-form";
 import { ToySeriesCard } from "@/components/toy-series-card";
+import { ToySeriesCreateDialog } from "@/components/toys/toy-series-create-dialog";
 
 // 按货号聚合的商品数据接口
 interface GroupedItem {
@@ -232,6 +233,7 @@ export default function ItemsPage() {
   const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [categories, setCategories] = React.useState<any[]>([]);
   const [addSkuDialogOpen, setAddSkuDialogOpen] = React.useState(false);
+  const [addSeriesDialogOpen, setAddSeriesDialogOpen] = React.useState(false);
   const [refreshFlag, setRefreshFlag] = React.useState(0);
   const pageSize = 24; // 每页显示24个商品卡片
 
@@ -367,11 +369,17 @@ export default function ItemsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button 
-            onClick={() => setAddSkuDialogOpen(true)}
+            onClick={() => {
+              if (categoryFilter === "潮玩类") {
+                setAddSeriesDialogOpen(true);
+              } else {
+                setAddSkuDialogOpen(true);
+              }
+            }}
             className="gap-2 bg-blue-600 hover:bg-blue-700"
           >
             <span className="text-lg">{EmojiIcons.Plus}</span>
-            新增SKU
+            {categoryFilter === "潮玩类" ? "新增系列" : "新增SKU"}
           </Button>
           <Button 
             variant="outline" 
@@ -449,12 +457,18 @@ export default function ItemsPage() {
             />
           </div>
           <Button 
-            onClick={() => setAddSkuDialogOpen(true)}
+            onClick={() => {
+              if (categoryFilter === "潮玩类") {
+                setAddSeriesDialogOpen(true);
+              } else {
+                setAddSkuDialogOpen(true);
+              }
+            }}
             size="sm"
             className="gap-1 px-3 bg-green-600 hover:bg-green-700"
           >
             <span className="text-lg">{EmojiIcons.Plus}</span>
-            新增
+            {categoryFilter === "潮玩类" ? "新增系列" : "新增"}
           </Button>
           <Button 
             variant="outline" 
@@ -515,7 +529,16 @@ export default function ItemsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {/* 潮玩系列卡片 */}
             {toySeries.map((series) => (
-              <ToySeriesCard key={series.seriesId} {...series} />
+              <ToySeriesCard 
+                key={series.seriesId} 
+                {...series}
+                onSeriesUpdate={(seriesId: string, updatedData: any) => {
+                  // 处理系列更新
+                  console.log("系列更新:", seriesId, updatedData);
+                  // 这里可以调用API更新数据，然后刷新页面
+                  setRefreshFlag(prev => prev + 1);
+                }}
+              />
             ))}
             
             {/* 普通商品卡片 */}
@@ -575,6 +598,16 @@ export default function ItemsPage() {
           </Button>
         </div>
       )}
+
+      {/* 新增系列对话框 */}
+      <ToySeriesCreateDialog
+        isOpen={addSeriesDialogOpen}
+        onClose={() => setAddSeriesDialogOpen(false)}
+        onSuccess={() => {
+          setAddSeriesDialogOpen(false);
+          setRefreshFlag(prev => prev + 1);
+        }}
+      />
 
       {/* 新增SKU对话框 */}
       <SafeDialog open={addSkuDialogOpen} onOpenChange={setAddSkuDialogOpen}>

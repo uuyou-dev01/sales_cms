@@ -209,7 +209,7 @@ export default function SalesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itemIds: [itemId],
-          status: newStatus
+          newStatus: newStatus
         })
       });
 
