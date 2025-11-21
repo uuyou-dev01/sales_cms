@@ -16,6 +16,7 @@ export async function getAvailableItemsForSale(options: {
   listingStatus?: string
   requiresListing?: boolean
   limit?: number
+  includeNew?: boolean
 }) {
   const {
     skuId,
@@ -27,6 +28,7 @@ export async function getAvailableItemsForSale(options: {
     listingStatus,
     requiresListing = false,
     limit,
+    includeNew = false,
   } = options
 
   const where: Prisma.ItemWhereInput = {
@@ -47,6 +49,10 @@ export async function getAvailableItemsForSale(options: {
           },
         }
       : {}),
+  }
+
+  if (!includeNew && !itemCondition) {
+    where.itemCondition = { not: 'NEW' }
   }
 
   const items = await prisma.item.findMany({
@@ -128,6 +134,7 @@ export async function createBundledSale(params: {
   domesticTrackingNumber?: string
   internationalTrackingNumber?: string
   orderStatus?: string
+  platformFeeRateOverride?: number
 }) {
   const {
     items,
@@ -146,6 +153,7 @@ export async function createBundledSale(params: {
     domesticTrackingNumber,
     internationalTrackingNumber,
     orderStatus = '已完成',
+    platformFeeRateOverride,
   } = params
 
   // 1. 获取所有Item的详细信息（包括采购成本）
@@ -181,6 +189,14 @@ export async function createBundledSale(params: {
         shippingFee: platform.shippingFee ? Number(platform.shippingFee) : null,
         tierRules: platform.tierRules as any,
       }
+    }
+  }
+
+  if (platformFeeRateOverride !== undefined && platformFeeRateOverride !== null) {
+    platformConfig = {
+      baseFeeRate: platformFeeRateOverride,
+      shippingFee: platformConfig?.shippingFee,
+      tierRules: platformConfig?.tierRules,
     }
   }
 
@@ -298,6 +314,39 @@ export async function createBundledSale(params: {
           soldById: soldById || createdById,
         },
       })
+
+      // 自动下架该Item在所有平台上的活跃上架记录
+      const activeListings = await tx.itemListing.findMany({
+        where: {
+          itemId: item.itemId,
+          status: { in: ['LISTED', 'PENDING', 'DRAFT'] },
+        },
+      })
+
+      for (const listing of activeListings) {
+        await tx.itemListing.update({
+          where: { id: listing.id },
+          data: {
+            status: 'ENDED',
+            note: `系统自动下架：商品已在 ${soldPlatform || '其他平台'} 售出`,
+            updatedAt: new Date(),
+          },
+        })
+
+        await tx.listingActivity.create({
+          data: {
+            listingId: listing.id,
+            platformId: listing.platformId,
+            itemId: listing.itemId,
+            templateId: listing.templateId,
+            sourceType: listing.sourceType,
+            action: 'AUTO_END',
+            status: 'ENDED',
+            operatorId: createdById,
+            payload: { reason: 'ITEM_SOLD', soldPlatform, transactionId: transaction.id },
+          },
+        })
+      }
 
       // 创建库存调整记录
       await tx.stockAdjustment.create({

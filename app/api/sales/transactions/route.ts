@@ -14,9 +14,16 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const itemId = searchParams.get('itemId');
+    const platformId = searchParams.get('platformId');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+    const filters: { platformId?: string; startDate?: Date; endDate?: Date } = {};
+    if (platformId) filters.platformId = platformId;
+    if (startDateParam) filters.startDate = new Date(startDateParam);
+    if (endDateParam) filters.endDate = new Date(endDateParam);
     const data = itemId
       ? await prisma.transaction.findMany({ where: { itemId }, orderBy: { createdAt: 'desc' } })
-      : await listTransactions();
+      : await listTransactions(filters);
     return ok(data);
   } catch (e) {
     return serverError('TRANSACTION_LIST_FAILED');
@@ -54,6 +61,10 @@ export async function POST(req: NextRequest) {
         domesticTrackingNumber: body.domesticTrackingNumber || undefined,
         internationalTrackingNumber: body.internationalTrackingNumber || undefined,
         orderStatus: body.orderStatus || '已完成',
+        platformFeeRateOverride:
+          body.platformFeeRateOverride !== undefined && body.platformFeeRateOverride !== null
+            ? Number(body.platformFeeRateOverride)
+            : undefined,
       });
 
       // 自动生成财务流水（售出收入）

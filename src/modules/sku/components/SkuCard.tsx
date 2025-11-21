@@ -180,33 +180,6 @@ export function SkuCard({ sku, onClick, onEdit, onDelete }: SkuCardProps) {
   const revenue = sku.stats?.sales?.totalRevenue ?? 0
   const profitRate = sku.stats?.sales?.profitRate ?? 0
 
-  const statusChips = [
-    {
-      label: '在库',
-      value: inventorySnapshot.inStockCount || 0,
-      tone: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-      Icon: PackageCheck,
-    },
-    {
-      label: '在途',
-      value: inventorySnapshot.inTransitCount || 0,
-      tone: 'bg-blue-50 text-blue-700 border-blue-100',
-      Icon: Truck,
-    },
-    {
-      label: '预留',
-      value: inventorySnapshot.reservedCount || 0,
-      tone: 'bg-amber-50 text-amber-700 border-amber-100',
-      Icon: Archive,
-    },
-    {
-      label: '已售',
-      value: inventorySnapshot.soldCount || 0,
-      tone: 'bg-slate-50 text-slate-700 border-slate-100',
-      Icon: Package,
-    },
-  ]
-
   return (
     <Card
       className="p-4 hover:shadow-lg transition-all cursor-pointer group relative flex flex-col h-full"
@@ -358,29 +331,10 @@ export function SkuCard({ sku, onClick, onEdit, onDelete }: SkuCardProps) {
       )}
 
       {/* 库存状态概览 */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        {statusChips.map(({ label, value, tone, Icon }) => (
-          <div key={label} className={`rounded-lg border text-xs px-3 py-2 flex items-center justify-between ${tone}`}>
-            <div className="flex items-center gap-1">
-              <Icon className="h-3.5 w-3.5" />
-              <span>{label}</span>
-            </div>
-            <span className="font-semibold">{value ?? 0}</span>
-          </div>
-        ))}
-      </div>
+      
 
       {/* 底部统计信息 */}
       <div className="flex items-center justify-between text-sm pt-3 border-t mt-auto flex-shrink-0">
-        <div className="flex items-center gap-1 text-gray-600">
-          <Package className="h-4 w-4" />
-          <div className="text-xs">
-            <div>在库: <strong className="text-gray-900">{inventorySnapshot.inStockCount || 0}</strong></div>
-            {inventorySnapshot.inTransitCount > 0 && (
-              <div className="text-gray-500">在途: {inventorySnapshot.inTransitCount}</div>
-            )}
-          </div>
-        </div>
         {revenue > 0 && (
           <div className="text-right">
             <div className="text-gray-900 font-medium text-sm">
@@ -393,10 +347,6 @@ export function SkuCard({ sku, onClick, onEdit, onDelete }: SkuCardProps) {
         )}
       </div>
 
-      {/* 创建时间 */}
-      <div className="text-xs text-gray-500 mt-2 flex-shrink-0">
-        {format(new Date(sku.createdAt), 'yyyy-MM-dd', { locale: zhCN })}
-      </div>
     </Card>
   )
 }

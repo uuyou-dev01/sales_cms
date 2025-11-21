@@ -151,10 +151,10 @@ export function CreateSaleDialog({
       const params = new URLSearchParams()
       if (skuId) params.append('skuId', skuId)
       if (itemSize) params.append('itemSize', itemSize)
-      if (itemCondition) params.append('itemCondition', itemCondition)
+      if (itemCondition && itemCondition !== '_ALL_') params.append('itemCondition', itemCondition)
       if (itemColor) params.append('itemColor', itemColor)
       if (toyCharacterName) params.append('toyCharacterName', toyCharacterName)
-      if (platformId) params.append('platformId', platformId)
+      if (platformId && platformId !== '_ALL_' && platformId !== '_NONE_') params.append('platformId', platformId)
       if (listingFilterMode === 'LISTED_ONLY') {
         params.append('requiresListing', 'true')
         params.append('listingStatus', 'LISTED')
@@ -219,13 +219,13 @@ export function CreateSaleDialog({
 
   // 获取平台配置（用于利润计算）
   const selectedPlatform = React.useMemo(
-    () => platforms.find((p) => p.id === platformId),
+    () => platforms.find((p) => p.id === platformId && platformId !== '_ALL_' && platformId !== '_NONE_'),
     [platforms, platformId]
   )
   const previousPlatformRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
-    if (!platformId) {
+    if (!platformId || platformId === '_ALL_' || platformId === '_NONE_') {
       previousPlatformRef.current = null
       return
     }
@@ -408,7 +408,7 @@ export function CreateSaleDialog({
         totalSoldPrice: Number(totalSoldPrice),
         soldPriceCurrency,
         soldPriceExchangeRate: Number(soldPriceExchangeRate),
-        platformId: platformId || undefined,
+        platformId: platformId && platformId !== '_ALL_' && platformId !== '_NONE_' ? platformId : undefined,
         soldPlatform: soldPlatform || undefined,
         soldDate: new Date(soldDate).toISOString(),
         domesticShipping: domesticShipping ? Number(domesticShipping) : 0,
@@ -476,7 +476,7 @@ export function CreateSaleDialog({
                       <SelectValue placeholder="全部平台" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部平台</SelectItem>
+                      <SelectItem value="_ALL_">全部平台</SelectItem>
                       {platforms.map((platform) => (
                         <SelectItem key={platform.id} value={platform.id}>
                           {platform.name}
@@ -500,7 +500,7 @@ export function CreateSaleDialog({
                       <SelectValue placeholder="全部成色" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部成色</SelectItem>
+                      <SelectItem value="_ALL_">全部成色</SelectItem>
                       <SelectItem value="NEW">全新</SelectItem>
                       <SelectItem value="USED_A">中古 A</SelectItem>
                       <SelectItem value="USED_B">中古 B</SelectItem>
@@ -755,7 +755,7 @@ export function CreateSaleDialog({
                       <SelectValue placeholder="选择平台" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">无</SelectItem>
+                      <SelectItem value="_NONE_">无</SelectItem>
                       {platforms.map(platform => (
                         <SelectItem key={platform.id} value={platform.id}>
                           {platform.name}

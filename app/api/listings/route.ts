@@ -9,6 +9,10 @@ import { subDays, formatISO } from 'date-fns'
 
 const RELEASE_STATUSES = new Set(['ARCHIVED', 'CANCELLED', 'ENDED', 'INACTIVE'])
 const DEFAULT_PAGE_SIZE = 20
+const TREND_LOOKBACK_DAYS = 6
+const STALE_THRESHOLD_DAYS = 14
+const SAMPLE_LIMIT = 300
+const HIGHLIGHT_LIMIT = 5
 
 function isReleasedStatus(status?: string | null) {
   if (!status) return false
@@ -133,8 +137,12 @@ async function fetchOverviewData(filters: {
     listingWhere.status = { notIn: Array.from(RELEASE_STATUSES) }
   }
 
+  const now = new Date()
+  const trendStartDate = subDays(now, TREND_LOOKBACK_DAYS)
+  const staleThreshold = subDays(now, STALE_THRESHOLD_DAYS)
+
   const activityWhere: Prisma.ListingActivityWhereInput = {
-    createdAt: { gte: subDays(new Date(), 6) },
+    createdAt: { gte: trendStartDate },
     ...(filters.platformId ? { platformId: filters.platformId } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.sourceType && filters.sourceType !== 'ALL'
@@ -142,7 +150,34 @@ async function fetchOverviewData(filters: {
       : {}),
   }
 
-  const [templateSummary, platformGroup, sourceGroup, activities] = await Promise.all([
+  const readyItemsWhere: Prisma.ItemWhereInput = {
+    status: 'IN_STOCK',
+    deleted: false,
+    listings: {
+      none: {
+        status: {
+          notIn: Array.from(RELEASE_STATUSES),
+        },
+      },
+    },
+  }
+
+  const staleListingsWhere: Prisma.ItemListingWhereInput = {
+    status: {
+      notIn: Array.from(RELEASE_STATUSES),
+    },
+    OR: [
+      { listedAt: { lt: staleThreshold } },
+      { AND: [{ listedAt: null }, { createdAt: { lt: staleThreshold } }] },
+    ],
+    ...(filters.platformId ? { platformId: filters.platformId } : {}),
+    ...(filters.sourceType && filters.sourceType !== 'ALL'
+      ? { sourceType: filters.sourceType as Prisma.ListingSourceType }
+      : {}),
+  }
+
+  const [templateSummary, platformGroup, sourceGroup, activities, listingDurationSamples, sellDurationSamples, staleListings, staleTotal, readyItems, readyTotal] =
+    await Promise.all([
     prisma.subSkuTemplate.aggregate({
       _sum: {
         availableQuantity: true,
@@ -169,6 +204,73 @@ async function fetchOverviewData(filters: {
       },
       select: { createdAt: true, action: true },
     }),
+    prisma.itemListing.findMany({
+      where: {
+        listedAt: { not: null },
+      },
+      select: {
+        createdAt: true,
+        listedAt: true,
+        item: {
+          select: { createdAt: true },
+        },
+      },
+      orderBy: { listedAt: 'desc' },
+      take: SAMPLE_LIMIT,
+    }),
+    prisma.transaction.findMany({
+      where: {
+        soldDate: { not: null },
+      },
+      select: {
+        id: true,
+        soldDate: true,
+        createdAt: true,
+        item: {
+          select: {
+            itemId: true,
+            listings: {
+              select: { createdAt: true },
+              orderBy: { createdAt: 'asc' },
+              take: 1,
+            },
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { soldDate: 'desc' },
+      take: SAMPLE_LIMIT,
+    }),
+    prisma.itemListing.findMany({
+      where: staleListingsWhere,
+      include: {
+        item: {
+          select: {
+            itemId: true,
+            itemName: true,
+            sku: { select: { id: true, name: true } },
+            purchaseCostCNY: true,
+            createdAt: true,
+          },
+        },
+        platform: { select: { id: true, name: true } },
+      },
+      orderBy: [
+        { listedAt: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      take: HIGHLIGHT_LIMIT,
+    }),
+    prisma.itemListing.count({ where: staleListingsWhere }),
+    prisma.item.findMany({
+      where: readyItemsWhere,
+      include: {
+        sku: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: HIGHLIGHT_LIMIT,
+    }),
+    prisma.item.count({ where: readyItemsWhere }),
   ])
 
   const platforms = await prisma.platform.findMany({
@@ -192,8 +294,8 @@ async function fetchOverviewData(filters: {
   }))
 
   const trendMap: Record<string, { created: number; closed: number }> = {}
-  for (let i = 6; i >= 0; i--) {
-    const date = formatISO(subDays(new Date(), i), { representation: 'date' })
+  for (let i = TREND_LOOKBACK_DAYS; i >= 0; i--) {
+    const date = formatISO(subDays(now, i), { representation: 'date' })
     trendMap[date] = { created: 0, closed: 0 }
   }
   activities.forEach((activity) => {
@@ -203,6 +305,34 @@ async function fetchOverviewData(filters: {
     if (activity.action === 'DELETE') trendMap[date].closed += 1
   })
 
+  const listingDurations = listingDurationSamples
+    .map((sample) => {
+      const listedAt = sample.listedAt ?? sample.createdAt
+      const itemCreatedAt = sample.item?.createdAt
+      if (!listedAt || !itemCreatedAt) return null
+      return listedAt.getTime() - itemCreatedAt.getTime()
+    })
+    .filter((duration): duration is number => typeof duration === 'number' && duration >= 0)
+
+  const sellDurations = sellDurationSamples
+    .map((sample) => {
+      const soldAt = sample.soldDate ?? sample.createdAt
+      const firstListingAt = sample.item?.listings?.[0]?.createdAt ?? sample.item?.createdAt
+      if (!soldAt || !firstListingAt) return null
+      return soldAt.getTime() - firstListingAt.getTime()
+    })
+    .filter((duration): duration is number => typeof duration === 'number' && duration >= 0)
+
+  const avgListingHours =
+    listingDurations.length > 0
+      ? Number((listingDurations.reduce((sum, d) => sum + d, 0) / listingDurations.length / (1000 * 60 * 60)).toFixed(1))
+      : null
+
+  const avgSellThroughHours =
+    sellDurations.length > 0
+      ? Number((sellDurations.reduce((sum, d) => sum + d, 0) / sellDurations.length / (1000 * 60 * 60)).toFixed(1))
+      : null
+
   return {
     summary: {
       templateCount: templateSummary._count.id,
@@ -211,6 +341,8 @@ async function fetchOverviewData(filters: {
       templateReserved: templateSummary._sum.reservedQuantity ?? 0,
       templateSold: templateSummary._sum.soldQuantity ?? 0,
       activeListings: platformStats.reduce((sum, item) => sum + item.count, 0),
+      avgListingHours,
+      avgSellThroughHours,
     },
     platformStats,
     sourceStats,
@@ -218,6 +350,31 @@ async function fetchOverviewData(filters: {
       date,
       ...value,
     })),
+    staleListings: staleListings.map((listing) => ({
+      id: listing.id,
+      itemId: listing.item?.itemId,
+      itemName: listing.item?.itemName || '未知商品',
+      skuId: listing.item?.sku?.id,
+      skuName: listing.item?.sku?.name,
+      platformId: listing.platform?.id,
+      platformName: listing.platform?.name || '未知平台',
+      listedAt: listing.listedAt ?? listing.createdAt,
+      daysListed: Math.round(
+        (now.getTime() - (listing.listedAt ?? listing.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      ),
+      purchaseCostCNY: listing.item?.purchaseCostCNY ?? null,
+    })),
+    staleListingsTotal: staleTotal,
+    readyToList: readyItems.map((item) => ({
+      itemId: item.itemId,
+      itemName: item.itemName,
+      skuId: item.sku?.id,
+      skuName: item.sku?.name,
+      purchaseCostCNY: item.purchaseCostCNY,
+      createdAt: item.createdAt,
+      daysInStock: Math.round((now.getTime() - item.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+    })),
+    readyToListTotal: readyTotal,
   }
 }
 

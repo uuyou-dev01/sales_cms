@@ -1,102 +1,131 @@
 'use client'
 
 import React from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/hooks/use-toast'
-import { NewItemListingDialog } from './NewItemListingDialog'
-import type { ItemListingView, ListingFilterValues } from '../types'
-import { Checkbox } from '@/components/ui/checkbox'
+import { ColumnFilter } from '../../../components/data-table/ColumnFilter'
+import { Toggle } from '@/components/ui/toggle'
+import { Filter } from 'lucide-react'
+import { BulkListingDialog } from './BulkListingDialog'
+import type { AvailableInventoryItem, ListingFilterValues } from '../types'
 
 interface ItemListingPanelProps {
   filters: ListingFilterValues
 }
 
+const ACTIVE_STATUSES = new Set(['LISTED', 'PENDING', 'DRAFT'])
+
 export function ItemListingPanel({ filters }: ItemListingPanelProps) {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [dialogInitialItems, setDialogInitialItems] = React.useState<string[]>([])
+  const [includeNewItems, setIncludeNewItems] = React.useState(false)
+
   const queryString = React.useMemo(() => {
     const params = new URLSearchParams()
-    params.set('mode', 'item')
-    if (filters.platformId) params.set('platformId', filters.platformId)
-    if (filters.status) params.set('status', filters.status)
-    if (filters.sourceType) params.set('sourceType', filters.sourceType)
-    if (filters.q) params.set('q', filters.q)
+    params.set('limit', '200')
     if (filters.skuId) params.set('skuId', filters.skuId)
+    if (includeNewItems) params.set('includeNew', 'true')
     return params.toString()
-  }, [filters.platformId, filters.status, filters.sourceType, filters.q, filters.skuId])
+  }, [filters.skuId, includeNewItems])
 
-  const { data, isLoading, error } = useQuery<{ items: ItemListingView[] }>({
-    queryKey: ['listings', 'items', queryString],
+  const query = useQuery<AvailableInventoryItem[]>({
+    queryKey: ['available-items', queryString],
     queryFn: async () => {
-      const res = await fetch(`/api/listings?${queryString}`, { cache: 'no-store' })
+      const res = await fetch(`/api/sales/available-items?${queryString}`, { cache: 'no-store' })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json?.error || '获取上架列表失败')
-      return json?.data || json
+      if (!res.ok) throw new Error(json?.error || '获取可上架库存失败')
+      const payload = json?.data ?? json
+      return Array.isArray(payload) ? payload : []
     },
-    keepPreviousData: true,
   })
+  const items = React.useMemo(() => query.data ?? [], [query.data])
+  const isLoading = query.isLoading
+  const error = query.error
+  const refetch = query.refetch
 
-  const items = data?.items ?? []
-  const [dialogOpen, setDialogOpen] = React.useState(false)
-  const [selected, setSelected] = React.useState<Record<string, boolean>>({})
-  const selectedIds = items.filter((item) => selected[item.id])
+  const [columnFilters, setColumnFilters] = React.useState<{
+    skuNames: string[]
+    platforms: string[]
+    statuses: string[]
+    conditions: string[]
+  }>({ skuNames: [], platforms: [], statuses: [], conditions: [] })
 
-  const handleDelete = async (ids: string[]) => {
-    if (ids.length === 0) return
-    if (!confirm(`确定要删除 ${ids.length} 条上架记录吗？`)) return
-    try {
-      await Promise.all(
-        ids.map((id) =>
-          fetch(`/api/listings/${id}`, {
-            method: 'DELETE',
-          })
+  const skuOptions = React.useMemo(
+    () => Array.from(new Set(items.map((listing) => listing.sku?.name || '未填写'))),
+    [items]
+  )
+  const platformOptions = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          items.flatMap((listing) =>
+            (listing.listings || []).map((entry) => entry.platform?.name || '未知平台')
+          )
         )
-      )
-      toast({ title: `删除成功 ${ids.length} 条` })
-      setSelected({})
-      queryClient.invalidateQueries({ queryKey: ['listings', 'items'] })
-      queryClient.invalidateQueries({ queryKey: ['listings', 'templates'] })
-    } catch (err) {
-      toast({
-        title: '删除失败',
-        description: err instanceof Error ? err.message : '请稍后重试',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleBulkArchive = async () => {
-    if (selectedIds.length === 0) return
-    try {
-      await Promise.all(
-        selectedIds.map((listing) =>
-          fetch(`/api/listings/${listing.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'ARCHIVED' }),
-          })
+      ),
+    [items]
+  )
+  const statusOptions = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          items.flatMap((listing) => (listing.listings || []).map((entry) => entry.status || 'UNKNOWN'))
         )
-      )
-      toast({ title: '批量更新成功' })
-      setSelected({})
-      queryClient.invalidateQueries({ queryKey: ['listings', 'items'] })
-      queryClient.invalidateQueries({ queryKey: ['listings', 'templates'] })
-    } catch (error) {
-      toast({
-        title: '批量更新失败',
-        description: error instanceof Error ? error.message : '请稍后重试',
-        variant: 'destructive',
-      })
-    }
-  }
+      ),
+    [items]
+  )
+  const conditionOptions = React.useMemo(
+    () => Array.from(new Set(items.map((listing) => listing.itemCondition || '未标注'))),
+    [items]
+  )
 
-  const toggleSelection = (id: string, value: boolean) => {
-    setSelected((prev) => ({ ...prev, [id]: value }))
+  const searchTerm = filters.q?.toLowerCase().trim()
+
+  const filteredItems = React.useMemo(() => {
+    return items.filter((listing) => {
+      if (searchTerm) {
+        const haystack = `${listing.itemName} ${listing.itemId} ${listing.sku?.name ?? ''}`.toLowerCase()
+        if (!haystack.includes(searchTerm)) return false
+      }
+      const skuName = listing.sku?.name || '未填写'
+      const condition = listing.itemCondition || '未标注'
+      const platformNames = (listing.listings || []).map((entry) => entry.platform?.name || '未知平台')
+      const statusValues = (listing.listings || []).map((entry) => entry.status || 'UNKNOWN')
+
+      if (columnFilters.skuNames.length > 0 && !columnFilters.skuNames.includes(skuName)) {
+        return false
+      }
+      if (columnFilters.conditions.length > 0 && !columnFilters.conditions.includes(condition)) {
+        return false
+      }
+      if (
+        columnFilters.platforms.length > 0 &&
+        !platformNames.some((platform) => columnFilters.platforms.includes(platform))
+      ) {
+        return false
+      }
+      if (
+        columnFilters.statuses.length > 0 &&
+        !statusValues.some((status) => columnFilters.statuses.includes(status))
+      ) {
+        return false
+      }
+      return true
+    })
+  }, [items, columnFilters, searchTerm])
+
+  const hasFilterApplied = React.useMemo(
+    () => Object.values(columnFilters).some((values) => values.length > 0),
+    [columnFilters]
+  )
+
+  const handleQuickListing = (itemId: string) => {
+    setDialogInitialItems([itemId])
+    setDialogOpen(true)
   }
 
   return (
@@ -104,27 +133,31 @@ export function ItemListingPanel({ filters }: ItemListingPanelProps) {
       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between space-y-0 pb-2">
         <div>
           <CardTitle className="text-xl">单件上架</CardTitle>
-          <CardDescription>适用于拆袋/二手等需要逐件管理的上架流程</CardDescription>
+          <CardDescription>聚焦中古 / 特殊品库存，直接挑选实物进行上架。</CardDescription>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => handleDelete(Object.keys(selected).filter((key) => selected[key]))} disabled={selectedIds.length === 0}>
-            批量删除
+        <div className="flex flex-wrap items-center gap-2">
+          <Toggle
+            pressed={includeNewItems}
+            onPressedChange={setIncludeNewItems}
+            aria-label="切换是否显示全新库存"
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            {includeNewItems ? '显示全部库存' : '仅显示非全新'}
+          </Toggle>
+          <Button variant="outline" onClick={() => refetch()}>
+            刷新
           </Button>
-          <Button onClick={() => setDialogOpen(true)}>批量创建</Button>
+          <Button
+            onClick={() => {
+              setDialogInitialItems([])
+              setDialogOpen(true)
+            }}
+          >
+            批量上架
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {selectedIds.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mb-4 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-2 text-sm">
-            <span>已选择 {selectedIds.length} 条上架</span>
-            <Button size="sm" onClick={handleBulkArchive}>
-              批量结束
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelected({})}>
-              清空
-            </Button>
-          </div>
-        )}
         {isLoading && (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
@@ -133,79 +166,143 @@ export function ItemListingPanel({ filters }: ItemListingPanelProps) {
           </div>
         )}
         {!isLoading && error && (
-          <div className="text-sm text-destructive">
-            {error instanceof Error ? error.message : '加载失败'}
-          </div>
+          <div className="text-sm text-destructive">{error instanceof Error ? error.message : '加载失败'}</div>
         )}
         {!isLoading && !error && (
           <>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">选择</TableHead>
-                  <TableHead>商品</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>平台</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>价格</TableHead>
+                  <TableHead>
+                    <div className="flex items-center justify-between">
+                      <span>商品</span>
+                      <ColumnFilter
+                        label="成色"
+                        options={conditionOptions}
+                        selectedValues={columnFilters.conditions}
+                        onChange={(values) => setColumnFilters((prev) => ({ ...prev, conditions: values }))}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center justify-between">
+                      <span>SKU</span>
+                      <ColumnFilter
+                        label="SKU"
+                        options={skuOptions}
+                        selectedValues={columnFilters.skuNames}
+                        onChange={(values) => setColumnFilters((prev) => ({ ...prev, skuNames: values }))}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead>成本</TableHead>
+                  <TableHead>
+                    <div className="flex items-center justify-between">
+                      <span>当前上架</span>
+                      <ColumnFilter
+                        label="平台"
+                        options={platformOptions}
+                        selectedValues={columnFilters.platforms}
+                        onChange={(values) => setColumnFilters((prev) => ({ ...prev, platforms: values }))}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center justify-between">
+                      <span>平台状态</span>
+                      <ColumnFilter
+                        label="状态"
+                        options={statusOptions}
+                        selectedValues={columnFilters.statuses}
+                        onChange={(values) => setColumnFilters((prev) => ({ ...prev, statuses: values }))}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead>入库信息</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((listing) => (
-                  <TableRow key={listing.id}>
-                    <TableCell>
-                      <Checkbox checked={!!selected[listing.id]} onCheckedChange={(checked) => toggleSelection(listing.id, Boolean(checked))} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm font-medium">
-                        {listing.item?.itemName || listing.template?.itemName || '未命名'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {listing.item?.itemSize || '-'} · {listing.item?.itemCondition || '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">{listing.item?.sku?.name || listing.template?.sku?.name || '-'}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {listing.item?.sku?.brand || listing.template?.sku?.brand || ''}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{listing.platform.name}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{listing.status}</Badge>
-                      {listing.sourceType === 'TEMPLATE' && (
-                        <div className="text-[11px] text-muted-foreground">
-                          模板 {listing.quantity - listing.fulfilledQuantity} 件
+                {filteredItems.map((item) => {
+                  const activeListings = (item.listings || []).filter((listing) =>
+                    ACTIVE_STATUSES.has((listing.status || '').toUpperCase())
+                  )
+                  return (
+                    <TableRow key={item.itemId}>
+                      <TableCell>
+                        <div className="text-sm font-medium">{item.itemName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.itemSize || '均码'} · {item.itemCondition || '未标注'}
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {listing.listingPrice ? `${listing.listingPrice} ${listing.listingCurrency || ''}` : '—'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete([listing.id])}>
-                        删除
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {items.length === 0 && (
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{item.sku?.name || '-'}</div>
+                        <div className="text-xs text-muted-foreground">{item.sku?.brand || ''}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">¥{(item.purchaseCostCNY ?? item.purchaseCost ?? 0).toFixed(0)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          原币：{item.purchaseCost ? `${item.purchaseCost}` : '—'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {activeListings.length === 0 ? (
+                          <Badge variant="secondary">未上架</Badge>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {activeListings.map((listing) => (
+                              <Badge key={listing.id} variant="outline">
+                                {listing.platform?.name || '平台'} · {listing.status}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          {(item.listings || []).length === 0 && '—'}
+                          {(item.listings || []).map((listing) => (
+                            <div key={listing.id}>
+                              {listing.platform?.name || '平台'} · {listing.status}
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{new Date(item.createdAt).toLocaleDateString()}</div>
+                        <div className="text-xs text-muted-foreground">批次：{item.batchNumber || '-'}</div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleQuickListing(item.itemId)}
+                          disabled={activeListings.length > 0}
+                        >
+                          {activeListings.length > 0 ? '已上架' : '一键上架'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+                {filteredItems.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      暂无上架记录
+                      {items.length === 0 && !hasFilterApplied && !searchTerm
+                        ? '暂无满足条件的库存'
+                        : '无匹配结果，请调整筛选条件'}
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-            <NewItemListingDialog
+            <BulkListingDialog
               open={dialogOpen}
+              mode="ITEM"
+              preselectedItemIds={dialogInitialItems}
               onClose={() => setDialogOpen(false)}
               onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['listings', 'items'] })
+                refetch()
               }}
             />
           </>
@@ -214,4 +311,3 @@ export function ItemListingPanel({ filters }: ItemListingPanelProps) {
     </Card>
   )
 }
-

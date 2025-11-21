@@ -46,6 +46,8 @@ export interface ItemListingView {
   platform: {
     id: string
     name: string
+    baseFeeRate?: number | null
+    shippingFee?: number | null
   }
   item?: {
     itemId: string
@@ -58,6 +60,12 @@ export interface ItemListingView {
       name: string
       brand?: string | null
     } | null
+    purchaseCost?: number | null
+    purchaseCostCNY?: number | null
+    shippingCost?: number | null
+    shippingCostCNY?: number | null
+    additionalCost?: number | null
+    additionalCostCNY?: number | null
   } | null
   template?: {
     id: string
@@ -116,5 +124,33 @@ export interface ListingHistoryEntry {
   } | null
   meta?: Record<string, unknown> | null
   listing?: ItemListingView | null
+}
+
+export interface AvailableInventoryItem {
+  itemId: string
+  itemName: string
+  itemSize?: string | null
+  itemCondition?: string | null
+  sku?: {
+    id: string
+    name: string
+    brand?: string | null
+    category?: {
+      id: string
+      name?: string | null
+    } | null
+  } | null
+  purchaseCost?: number | null
+  purchaseCostCNY?: number | null
+  batchNumber?: string | null
+  createdAt: string | Date
+  listings?: Array<{
+    id: string
+    status: string
+    platform: {
+      id: string
+      name: string
+    }
+  }>
 }
 

@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 const transactionInclude = {
   item: true,
+  platform: true,
   details: {
     include: {
       item: true,
@@ -13,8 +14,17 @@ const transactionInclude = {
   soldBy: true,
 } satisfies Prisma.TransactionInclude;
 
-export function listTransactions() {
-  return prisma.transaction.findMany({ include: transactionInclude, orderBy: { createdAt: 'desc' } });
+export function listTransactions(filters?: { platformId?: string; startDate?: Date; endDate?: Date }) {
+  const where: Prisma.TransactionWhereInput = {}
+  if (filters?.platformId) {
+    where.platformId = filters.platformId
+  }
+  if (filters?.startDate || filters?.endDate) {
+    where.soldDate = {}
+    if (filters.startDate) where.soldDate.gte = filters.startDate
+    if (filters.endDate) where.soldDate.lte = filters.endDate
+  }
+  return prisma.transaction.findMany({ where, include: transactionInclude, orderBy: { soldDate: 'desc' } });
 }
 
 export function getTransactionById(id: string) {

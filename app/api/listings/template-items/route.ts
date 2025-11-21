@@ -51,6 +51,12 @@ export async function GET(req: NextRequest) {
         itemCondition: item.itemCondition,
         createdAt: item.createdAt,
         sku: item.sku,
+        purchaseCostCNY: item.purchaseCostCNY,
+        shippingCostCNY: item.shippingCostCNY,
+        additionalCostCNY: item.additionalCostCNY,
+        purchaseCost: item.purchaseCost,
+        shippingCost: item.shippingCost,
+        batchNumber: item.batchNumber,
       })),
     })
   } catch (error) {

@@ -13,8 +13,9 @@ const ListingFilters = dynamic(() => import('@/src/modules/listings/components/L
 const ListingOverviewPanel = dynamic(() => import('@/src/modules/listings/components/ListingOverviewPanel').then(m => m.ListingOverviewPanel), { ssr: false })
 const ListingHistoryPanel = dynamic(() => import('@/src/modules/listings/components/ListingHistoryPanel').then(m => m.ListingHistoryPanel), { ssr: false })
 const ListedItemsPanel = dynamic(() => import('@/src/modules/listings/components/ListedItemsPanel').then(m => m.ListedItemsPanel), { ssr: false })
+const SoldItemsPanel = dynamic(() => import('@/src/modules/listings/components/SoldItemsPanel').then(m => m.SoldItemsPanel), { ssr: false })
 
-const TAB_VALUES = ['overview', 'template', 'item', 'listed', 'history'] as const
+const TAB_VALUES = ['overview', 'template', 'item', 'listed', 'history', 'sold'] as const
 type TabValue = (typeof TAB_VALUES)[number]
 
 function isTabValue(value: string | null): value is TabValue {
@@ -134,6 +135,7 @@ export default function ListingsPage() {
           <TabsTrigger value="template">模板上架</TabsTrigger>
           <TabsTrigger value="item">单件上架</TabsTrigger>
           <TabsTrigger value="listed">已上架</TabsTrigger>
+          <TabsTrigger value="sold">已售出</TabsTrigger>
           <TabsTrigger value="history">上架记录</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
@@ -147,6 +149,9 @@ export default function ListingsPage() {
         </TabsContent>
         <TabsContent value="listed" className="space-y-4">
           <ListedItemsPanel filters={filters} />
+        </TabsContent>
+        <TabsContent value="sold" className="space-y-4">
+          <SoldItemsPanel />
         </TabsContent>
         <TabsContent value="history" className="space-y-4">
           <ListingHistoryPanel filters={filters} />

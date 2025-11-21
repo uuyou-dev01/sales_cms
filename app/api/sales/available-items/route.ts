@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     const listingStatus = searchParams.get('listingStatus')
     const requiresListing = searchParams.get('requiresListing') === 'true'
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
+    const includeNew = searchParams.get('includeNew') === 'true'
 
     const items = await getAvailableItemsForSale({
       skuId: skuId || undefined,
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
       listingStatus: listingStatus || undefined,
       requiresListing,
       limit,
+      includeNew,
     })
 
     return ok(items)
