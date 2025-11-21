@@ -1,0 +1,8 @@
+[
+  { "id": "cat-apparel", "name": "服装", "parentId": null, "description": "衣物、外套等" },
+  { "id": "cat-shoes", "name": "鞋履", "parentId": null, "description": "运动鞋、皮鞋等" },
+  { "id": "cat-bag", "name": "箱包", "parentId": null, "description": "背包、手提包" },
+  { "id": "cat-toy", "name": "潮玩", "parentId": null, "description": "玩具、模型与收藏" },
+  { "id": "cat-electronic", "name": "电子产品", "parentId": null, "description": "数码、配件" },
+  { "id": "cat-other", "name": "其他", "parentId": null, "description": "未归类的品类" }
+]

@@ -171,15 +171,31 @@ export function PriceCalculator() {
             <Label htmlFor="exchangeRate" className="text-sm">
               汇率 ({formData.currency} → JPY)
             </Label>
-            <Input
-              id="exchangeRate"
-              type="number"
-              step="0.001"
-              placeholder="0.05"
-              value={formData.exchangeRate}
-              onChange={(e) => setFormData(prev => ({ ...prev, exchangeRate: e.target.value }))}
-              className="w-full"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="exchangeRate"
+                type="number"
+                step="0.001"
+                placeholder="0.05"
+                value={formData.exchangeRate}
+                onChange={(e) => setFormData(prev => ({ ...prev, exchangeRate: e.target.value }))}
+                className="w-full"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/exchange?base=${formData.currency}&quote=JPY`);
+                    const json = await res.json();
+                    const latest = Array.isArray(json?.data) ? json.data[0] : null;
+                    if (latest?.rate) {
+                      setFormData(prev => ({ ...prev, exchangeRate: String(latest.rate) }));
+                    }
+                  } catch { /* noop */ }
+                }}
+              >自动汇率</Button>
+            </div>
           </div>
         )}
 

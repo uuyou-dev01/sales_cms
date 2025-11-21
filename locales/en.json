@@ -1,0 +1,24 @@
+{
+  "item": "Item",
+  "price": "Price",
+  "warehouse": "Warehouse",
+  "split": "Split",
+  "logistics": "Logistics",
+  "finance": "Finance",
+  "user": "User",
+  "sku": {
+    "title": "SKU Management",
+    "new": "New SKU",
+    "edit": "Edit",
+    "delete": "Delete",
+    "manage": "Manage",
+    "view": "View",
+    "status": {
+      "live": "Live",
+      "draft": "Draft",
+      "soldout": "Sold out"
+    }
+  }
+}
+
+

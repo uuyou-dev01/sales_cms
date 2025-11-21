@@ -78,7 +78,7 @@ export default function BatchImport() {
         });
       }, 200);
 
-      const response = await fetch("/api/items/batch-import", {
+      const response = await fetch("/api/shared/import/items", {
         method: "POST",
         body: formData,
       });

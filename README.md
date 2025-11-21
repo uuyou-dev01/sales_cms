@@ -16,13 +16,14 @@
 shop_cms/
 ├── app/
 │   ├── api/                    # API 路由
-│   │   ├── items/             # 商品相关API
-│   │   │   ├── list/          # 获取商品列表
-│   │   │   ├── create/        # 创建商品
-│   │   │   ├── update/        # 更新商品
-│   │   │   ├── delete/        # 删除商品
-│   │   │   ├── months/        # 获取月份列表
-│   │   │   └── stats/         # 获取统计数据
+│   │   ├── inventory/         # 库存与商品 API（新）
+│   │   │   ├── items/         # 列表/创建/详情/更新/删除/分组/统计/月度
+│   │   ├── sales/             # 交易 API（新）
+│   │   │   └── transactions/  # 列表/创建/更新/删除
+│   │   ├── sku/               # SKU API（新）
+│   │   ├── finance/           # 财务与汇率 API（新）
+│   │   ├── purchase/          # 采购单与明细 API（新）
+│   │   └── shared/            # 通用导入/导出/上传等
 │   │   └── csv/               # CSV上传相关API
 │   ├── sales/                 # 销售管理页面
 │   │   ├── layout.tsx         # 销售页面布局
@@ -100,22 +101,32 @@ npm run dev
 ### 访问应用
 - 主页面: http://localhost:3000
 - 测试页面: http://localhost:3000/test
-- API文档: http://localhost:3000/api/items
+- API概览: docs/OPENAPI.json
 
 ## 📊 API 接口
 
-### 商品管理
-- `GET /api/items/list` - 获取商品列表
-- `POST /api/items/create` - 创建商品
-- `PUT /api/items/update` - 更新商品
-- `DELETE /api/items/delete` - 删除商品
+### 库存与商品（新）
+- `GET /api/inventory/items` - 获取商品列表
+- `POST /api/inventory/items` - 创建商品
+- `GET /api/inventory/items/{itemId}` - 获取商品详情
+- `PUT /api/inventory/items/{itemId}` - 更新商品
+- `DELETE /api/inventory/items/{itemId}` - 删除商品
+- `GET /api/inventory/items/stats` - 获取统计数据
+- `GET /api/inventory/items/months` - 获取月份列表
 
 ### 数据统计
 - `GET /api/items/stats` - 获取统计数据
 - `GET /api/items/months` - 获取月份列表
 
-### 批量导入
-- `POST /api/items/batch-import` - 批量导入CSV文件
+### 导入/导出（新）
+- `POST /api/shared/import/items` - 批量导入CSV文件
+- `POST /api/shared/export/inventory` - 导出商品数据（CSV）
+
+### 交易（新）
+- `GET /api/sales/transactions?itemId=...` - 列表（可按商品）
+- `POST /api/sales/transactions` - 创建交易（自动生成财务记录）
+- `PUT /api/sales/transactions/{id}` - 更新交易（自动更新财务）
+- `DELETE /api/sales/transactions/{id}`
 
 ### 查询参数
 - `page`: 页码

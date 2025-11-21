@@ -73,17 +73,31 @@ export async function clearAuthCookie(): Promise<void> {
   cookieStore.delete('auth-session');
 }
 
-// 从请求头获取认证信息
+// 从请求头或Cookie获取认证信息
 export function getAuthFromRequest(request: NextRequest): AuthUser | null {
   try {
+    // 首先尝试从 Authorization header 获取
     const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) return null;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const payload = verifyJWT(token);
+      if (payload?.user) return payload.user;
+    }
     
-    const token = authHeader.substring(7);
-    const payload = verifyJWT(token);
+    // 如果 header 没有，尝试从 Cookie 获取
+    const authCookie = request.cookies.get('auth-session');
+    if (authCookie?.value) {
+      try {
+        const session = JSON.parse(authCookie.value) as { user?: AuthUser; expires: string };
+        if (session.user && new Date(session.expires) > new Date()) {
+          return session.user;
+        }
+      } catch {
+        // Cookie 解析失败，继续返回 null
+      }
+    }
     
-    if (!payload?.user) return null;
-    return payload.user;
+    return null;
   } catch (error) {
     return null;
   }
@@ -98,6 +112,26 @@ export function hasPermission(user: AuthUser, requiredRole: 'ADMIN' | 'USER' | '
   };
   
   return roleHierarchy[user.role] >= roleHierarchy[requiredRole];
+}
+
+// 细粒度 JSON 权限点检查（从角色聚合 permissions JSON 判断）
+// 注意：为避免在路由中引入 await，提供可选的异步方法，按需使用
+import { prisma } from '@/lib/prisma';
+export async function hasPermissionAction(user: AuthUser, action: string): Promise<boolean> {
+  try {
+    // 系统管理员直接放行
+    if (user.role === 'ADMIN') return true;
+    const links = await prisma.userRoleLink.findMany({
+      where: { userId: user.id },
+      include: { role: true },
+    }) as Array<{ role: { permissions: any } }>;
+    const permissions = links.flatMap((link) => {
+      try { return Array.isArray(link.role.permissions) ? link.role.permissions : []; } catch { return []; }
+    }) as string[];
+    return permissions.includes(action);
+  } catch {
+    return false;
+  }
 }
 
 // 生成随机密码

@@ -277,7 +277,7 @@ export default function MonthPage({ params }: { params: Promise<{ month: string 
   // 状态变更处理函数
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     try {
-      const response = await fetch("/api/items/batch-update-status", {
+      const response = await fetch("/api/inventory/items/batch/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

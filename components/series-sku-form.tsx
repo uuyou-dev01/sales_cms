@@ -194,7 +194,7 @@ export function SeriesSKUForm({ seriesId, seriesName, brandName, onSuccess }: Se
         toyCondition: formData.toyCondition,
       };
 
-      const response = await fetch('/api/items/create-sku', {
+      const response = await fetch('/api/sku', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(skuData),

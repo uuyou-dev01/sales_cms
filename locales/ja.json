@@ -1,0 +1,24 @@
+{
+  "item": "商品",
+  "price": "価格",
+  "warehouse": "倉庫",
+  "split": "分割",
+  "logistics": "物流",
+  "finance": "財務",
+  "user": "ユーザー",
+  "sku": {
+    "title": "SKU 管理",
+    "new": "SKU 新規",
+    "edit": "編集",
+    "delete": "削除",
+    "manage": "管理",
+    "view": "表示",
+    "status": {
+      "live": "在庫あり",
+      "draft": "下書き",
+      "soldout": "売り切れ"
+    }
+  }
+}
+
+

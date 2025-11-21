@@ -33,7 +33,7 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
     setIsExporting(true);
 
     try {
-      const response = await fetch("/api/items/export", {
+      const response = await fetch("/api/shared/export/inventory", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -54,7 +54,7 @@ export function StockManagement({ itemNumber, stockItems, onStockUpdate }: Stock
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/items/batch-update-status", {
+      const response = await fetch("/api/inventory/items/batch/status", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

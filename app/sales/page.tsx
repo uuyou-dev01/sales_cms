@@ -1,4 +1,4 @@
-"use client";
+'use client'
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,7 +204,7 @@ export default function SalesPage() {
   // 状态变更处理函数
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     try {
-      const response = await fetch("/api/items/batch-update-status", {
+      const response = await fetch("/api/inventory/items/batch/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

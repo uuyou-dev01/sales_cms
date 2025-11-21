@@ -67,33 +67,39 @@ export function TransactionForm({
 
     setLoading(true);
     try {
-      const transactionData = {
+      // 映射到标准交易字段
+      const isPurchase = transactionType === 'purchase';
+      const payload: any = {
         itemId,
-        type: transactionType,
-        unitPrice: parseFloat(formData.amount),
-        quantity: parseInt(formData.quantity) || 1,
-        totalAmount: parseFloat(formData.amount) * (parseInt(formData.quantity) || 1),
-        currency: formData.currency,
-        exchangeRate: parseFloat(formData.exchangeRate),
-        date: formData.date,
-        platform: formData.platform,
-        domesticShipping: parseFloat(formData.domesticShipping) || 0,
-        internationalShipping: parseFloat(formData.internationalShipping) || 0,
-        otherFees: formData.otherFees,
-        trackingNumber: formData.trackingNumber,
         orderStatus: formData.orderStatus,
-        remarks: formData.remarks,
+        domesticTrackingNumber: formData.trackingNumber || null,
+        domesticShipping: String(parseFloat(formData.domesticShipping) || 0),
+        internationalShipping: String(parseFloat(formData.internationalShipping) || 0),
+        otherFees: formData.otherFees || undefined,
       };
+      if (isPurchase) {
+        payload.purchasePrice = String(parseFloat(formData.amount));
+        payload.purchasePriceCurrency = formData.currency;
+        payload.purchasePriceExchangeRate = String(parseFloat(formData.exchangeRate) || 1);
+        payload.purchaseDate = formData.date;
+        payload.purchasePlatform = formData.platform;
+      } else {
+        payload.soldPrice = String(parseFloat(formData.amount));
+        payload.soldPriceCurrency = formData.currency;
+        payload.soldPriceExchangeRate = String(parseFloat(formData.exchangeRate) || 1);
+        payload.soldDate = formData.date;
+        payload.soldPlatform = formData.platform;
+      }
 
-      const response = await fetch('/api/transactions/create', {
+      const response = await fetch('/api/sales/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transactionData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
-      if (result.success || response.ok) {
+      if (response.ok) {
         toast({
           title: `${transactionType === 'purchase' ? '采购' : '销售'}记录创建成功`,
           description: `${characterName} ${variant} 的${transactionType === 'purchase' ? '采购' : '销售'}记录已添加`,

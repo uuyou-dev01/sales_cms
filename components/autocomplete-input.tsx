@@ -54,7 +54,7 @@ export function AutocompleteInput({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/items/autocomplete?q=${encodeURIComponent(searchValue)}&type=${type}`
+        `/api/inventory/items/autocomplete?q=${encodeURIComponent(searchValue)}&type=${type}`
       );
       const data = await response.json();
       setSuggestions(data.suggestions || []);

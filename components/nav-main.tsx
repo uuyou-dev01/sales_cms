@@ -1,9 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { type LucideIcon } from "lucide-react"
-import { EmojiIcons } from "@/components/emoji-icons";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, type LucideIcon } from "lucide-react"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -16,99 +14,115 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
+import { Badge } from "@/components/ui/badge"
 
-export function NavMain({
-  items,
-}: {
-  items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-      items?: {
-        title: string
-        url: string
-      }[]
-    }[]
-  }[]
-}) {
-  // 状态管理：控制哪个菜单项是展开的
+type NavLeaf = {
+  key: string
+  title: string
+  url: string
+  badge?: string
+}
+
+type NavChild = NavLeaf & {
+  items?: NavLeaf[]
+}
+
+type NavItem = {
+  key: string
+  title: string
+  url: string
+  icon?: LucideIcon
+  badge?: string
+  isActive?: boolean
+  items?: NavChild[]
+}
+
+export function NavMain({ items }: { items: NavItem[] }) {
   const [openItem, setOpenItem] = React.useState<string | null>(() => {
-    // 初始化时，找到活跃的菜单项并展开它
-    const activeItem = items.find(item => item.isActive);
-    return activeItem ? activeItem.title : null;
-  });
+    const activeItem = items.find((item) => item.isActive)
+    return activeItem ? activeItem.key : null
+  })
 
-  // 当items变化时，更新openItem
   React.useEffect(() => {
-    const activeItem = items.find(item => item.isActive);
+    const activeItem = items.find((item) => item.isActive)
     if (activeItem) {
-      setOpenItem(activeItem.title);
+      setOpenItem(activeItem.key)
     }
-  }, [items]);
+  }, [items])
 
-  // 图标映射函数
-  const getIcon = (title: string) => {
-    switch (title) {
-      case "销售管理":
-        return EmojiIcons.ShoppingCart;
-      case "仓库管理":
-        return EmojiIcons.Warehouse;
-      default:
-        return EmojiIcons.Package;
-    }
-  };
+  const handleToggle = (key: string) => {
+    setOpenItem((current) => (current === key ? null : key))
+  }
 
-  // 处理菜单项点击
-  const handleToggle = (title: string) => {
-    setOpenItem(openItem === title ? null : title);
-  };
+  const renderIcon = (Icon?: LucideIcon) =>
+    Icon ? <Icon className="h-4 w-4" aria-hidden="true" /> : <span className="h-4 w-4" />
+
+  const renderBadge = (badge?: string, className = "") =>
+    badge ? (
+      <Badge variant="secondary" className={`ml-auto text-xs font-medium ${className}`}>
+        {badge}
+      </Badge>
+    ) : null
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>工作区</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
-          <Collapsible 
-            key={item.title} 
-            asChild 
-            open={openItem === item.title}
-            onOpenChange={() => handleToggle(item.title)}
-            className="group/collapsible"
-          >
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
-                  <span className="text-lg">{getIcon(item.title)}</span>
-                  <span>{item.title}</span>
-                  <ChevronRight className="ml-auto h-4 w-4" />
+        {items.map((item) => {
+          const hasChildren = !!(item.items && item.items.length > 0)
+          if (!hasChildren) {
+            return (
+              <SidebarMenuItem key={item.key}>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <a href={item.url}>
+                    {renderIcon(item.icon)}
+                    <span>{item.title}</span>
+                    {renderBadge(item.badge)}
+                  </a>
                 </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {item.items && item.items.length > 0 ? (
-                    item.items.map((subItem) => (
-                      <React.Fragment key={subItem.title}>
-                        {/* 如果子项有自己的子项，则创建嵌套结构 */}
+              </SidebarMenuItem>
+            )
+          }
+
+          return (
+            <Collapsible
+              key={item.key}
+              asChild
+              open={openItem === item.key}
+              onOpenChange={() => handleToggle(item.key)}
+              className="group/collapsible"
+            >
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton tooltip={item.title}>
+                    {renderIcon(item.icon)}
+                    <span>{item.title}</span>
+                    {renderBadge(item.badge, "ml-2")}
+                    <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {item.items!.map((subItem) => (
+                      <React.Fragment key={subItem.key}>
                         {subItem.items && subItem.items.length > 0 ? (
-                          <Collapsible key={subItem.title} asChild className="group/nested-collapsible">
+                          <Collapsible asChild className="group/nested-collapsible">
                             <SidebarMenuSubItem>
                               <CollapsibleTrigger asChild>
                                 <SidebarMenuSubButton>
                                   <span>{subItem.title}</span>
-                                  <ChevronRight className="ml-auto h-3 w-3" />
+                                  {renderBadge(subItem.badge, "ml-2")}
+                                  <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/nested-collapsible:rotate-90" />
                                 </SidebarMenuSubButton>
                               </CollapsibleTrigger>
                               <CollapsibleContent>
                                 <SidebarMenuSub>
                                   {subItem.items.map((nestedItem) => (
-                                    <SidebarMenuSubItem key={nestedItem.title}>
+                                    <SidebarMenuSubItem key={nestedItem.key}>
                                       <SidebarMenuSubButton asChild>
                                         <a href={nestedItem.url}>
                                           <span className="ml-4">{nestedItem.title}</span>
+                                          {renderBadge(nestedItem.badge)}
                                         </a>
                                       </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
@@ -122,24 +136,19 @@ export function NavMain({
                             <SidebarMenuSubButton asChild>
                               <a href={subItem.url}>
                                 <span>{subItem.title}</span>
+                                {renderBadge(subItem.badge)}
                               </a>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
                         )}
                       </React.Fragment>
-                    ))
-                  ) : (
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton disabled>
-                        <span>暂无数据</span>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  )}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
-        ))}
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          )
+        })}
       </SidebarMenu>
     </SidebarGroup>
   )

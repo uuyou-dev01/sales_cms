@@ -1,7 +1,6 @@
 "use client";
 import * as React from "react";
 import { EmojiIcons } from "@/components/emoji-icons";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

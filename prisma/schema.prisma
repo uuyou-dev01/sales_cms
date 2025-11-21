@@ -25,24 +25,60 @@ model Item {
   position            String?
   warehousePositionId String?
   accessories         String?
-  toyCharacterId      String?
+  toyCharacterName    String?
   toyCondition        String?
   toyVariant          String?
-  toyCharacter        ToyCharacter?      @relation(fields: [toyCharacterId], references: [id])
-  warehousePosition   WarehousePosition? @relation(fields: [warehousePositionId], references: [id])
-  stockAdjustments    StockAdjustment[]
-  transactions        Transaction[]
+  parentItemId        String?
+  skuId               String
+  purchaseOrderId     String?
+  purchaseDetailId    String?
+  createdById         String?
+  soldById            String?
+  purchasedById       String?
+  status              String             @default("IN_STOCK")
+  batchNumber         String?
+  reservedFor         String?
+  templateId          String?
+  additionalCostCNY   Float              @default(0)
+  purchaseCostCNY     Float              @default(0)
+  shippingCostCNY     Float              @default(0)
+  
+  inventorySplitChild  InventorySplit[]   @relation("InventorySplit_childItemIdToItem")
+  inventorySplitParent InventorySplit[]   @relation("InventorySplit_parentItemIdToItem")
+  createdBy            User?              @relation("Item_createdByIdToUser", fields: [createdById], references: [id])
+  parentItem           Item?              @relation("ItemToItem", fields: [parentItemId], references: [itemId])
+  childItems           Item[]             @relation("ItemToItem")
+  purchaseDetail       PurchaseDetail?    @relation(fields: [purchaseDetailId], references: [id])
+  purchaseOrder        PurchaseOrder?     @relation(fields: [purchaseOrderId], references: [id])
+  purchasedBy          User?              @relation("Item_purchasedByIdToUser", fields: [purchasedById], references: [id])
+  sku                  SKU                @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  soldBy               User?              @relation("Item_soldByIdToUser", fields: [soldById], references: [id])
+  template             SubSkuTemplate?    @relation(fields: [templateId], references: [id])
+  warehousePosition    WarehousePosition? @relation(fields: [warehousePositionId], references: [id])
+  listings             ItemListing[]
+  stockAdjustments     StockAdjustment[]
+  transactions         Transaction[]
+  transactionDetails   TransactionDetail[]
+
+  @@index([batchNumber])
+  @@index([parentItemId])
+  @@index([purchaseDetailId])
+  @@index([purchaseOrderId])
+  @@index([skuId])
+  @@index([status])
+  @@index([templateId])
 }
 
 model Transaction {
-  id                          String    @id @default(cuid())
-  itemId                      String
+  id                          String              @id @default(cuid())
+  itemId                      String?
+  platformId                  String?
   shipping                    String?
   domesticShipping            String?
   internationalShipping       String?
   domesticTrackingNumber      String?
   internationalTrackingNumber String?
-  orderStatus                 String    @default("在途（国内）")
+  orderStatus                 String              @default("在途（国内）")
   purchaseDate                DateTime
   soldDate                    DateTime?
   launchDate                  DateTime?
@@ -60,9 +96,24 @@ model Transaction {
   itemNetProfit               String?
   isReturn                    Boolean?
   storageDuration             String?
-  createdAt                   DateTime  @default(now())
-  updatedAt                   DateTime  @updatedAt
-  item                        Item      @relation(fields: [itemId], references: [itemId])
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  createdById                 String?
+  soldById                    String?
+  isBundled                   Boolean             @default(false)
+  totalSoldPrice              Decimal?
+  priceAllocationMethod       String?
+  
+  createdBy                   User?               @relation("Transaction_createdByIdToUser", fields: [createdById], references: [id])
+  item                        Item?               @relation(fields: [itemId], references: [itemId])
+  platform                    Platform?           @relation(fields: [platformId], references: [id])
+  soldBy                      User?               @relation("Transaction_soldByIdToUser", fields: [soldById], references: [id])
+  details                     TransactionDetail[]
+
+  @@index([createdById])
+  @@index([isBundled])
+  @@index([platformId])
+  @@index([soldById])
 }
 
 model productRefPrice {
@@ -115,21 +166,34 @@ model Store {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime
-  User        User[]
+  users       User[]
 }
 
 model User {
-  id        String   @id
-  username  String   @unique
-  email     String?  @unique
-  password  String
-  name      String
-  role      UserRole @default(USER)
-  isActive  Boolean  @default(true)
-  storeId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  Store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  id               String            @id
+  username         String            @unique
+  email            String?           @unique
+  password         String
+  name             String
+  role             UserRole          @default(USER)
+  isActive         Boolean           @default(true)
+  storeId          String
+  level            Int               @default(1)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime
+  
+  financeRecords   FinanceRecord[]
+  inventorySplits  InventorySplit[]
+  createdItems     Item[]            @relation("Item_createdByIdToUser")
+  purchasedItems   Item[]            @relation("Item_purchasedByIdToUser")
+  soldItems        Item[]            @relation("Item_soldByIdToUser")
+  listingActivities ListingActivity[]
+  purchaseOrders   PurchaseOrder[]
+  createdTransactions Transaction[]  @relation("Transaction_createdByIdToUser")
+  soldTransactions    Transaction[]  @relation("Transaction_soldByIdToUser")
+  store            Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  activities       UserActivity[]
+  roles            UserRoleLink[]
 
   @@index([storeId])
 }
@@ -171,7 +235,6 @@ model ToyCharacter {
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  items       Item[]
   series      ToySeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   skus        ToySKU[]
 
@@ -204,9 +267,11 @@ model ToySKU {
   isActive         Boolean            @default(true)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
-  character        ToyCharacter       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  skuId            String?
   inventoryBatches InventoryBatch[]
   purchaseOrders   ToyPurchaseOrder[]
+  character        ToyCharacter       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  sku              SKU?               @relation(fields: [skuId], references: [id])
   salesRecords     ToySalesRecord[]
 
   @@unique([characterId, name])
@@ -264,6 +329,335 @@ model ToySalesRecord {
   @@index([date])
 }
 
+model Category {
+  id             String     @id
+  name           String
+  code           String?
+  parentId       String?
+  path           String?
+  level          Int        @default(1)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime
+  parent         Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children       Category[] @relation("CategoryToCategory")
+  skus           SKU[]
+
+  @@unique([name, parentId])
+  @@index([parentId])
+}
+
+model CompositeSKU {
+  id             String @id
+  parentSkuId    String
+  childSkuId     String
+  quantity       Int    @default(1)
+  childSku       SKU    @relation("CompositeSKU_childSkuIdToSKU", fields: [childSkuId], references: [id], onDelete: Cascade)
+  parentSku      SKU    @relation("CompositeSKU_parentSkuIdToSKU", fields: [parentSkuId], references: [id], onDelete: Cascade)
+
+  @@unique([parentSkuId, childSkuId])
+  @@index([childSkuId])
+}
+
+model ExchangeRate {
+  id                 String              @id
+  baseCurrency       String
+  quoteCurrency      String
+  rate               Decimal
+  rateDate           DateTime
+  source             String?
+  createdAt          DateTime            @default(now())
+  purchaseOrders     PurchaseOrder[]
+  transactionDetails TransactionDetail[]
+
+  @@unique([baseCurrency, quoteCurrency, rateDate])
+  @@index([rateDate])
+}
+
+model FinanceRecord {
+  id            String   @id
+  referenceType String
+  referenceId   String
+  direction     String
+  amount        Decimal
+  currency      String
+  occurredAt    DateTime
+  meta          Json?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  createdBy     User?    @relation(fields: [createdById], references: [id])
+
+  @@index([occurredAt])
+  @@index([referenceType, referenceId])
+}
+
+model InventorySplit {
+  id             String   @id
+  parentItemId   String
+  childItemId    String
+  method         String
+  ratio          Json?
+  allocatedCost  Decimal?
+  createdById    String?
+  createdAt      DateTime @default(now())
+  childItem      Item     @relation("InventorySplit_childItemIdToItem", fields: [childItemId], references: [itemId], onDelete: Cascade)
+  createdBy      User?    @relation(fields: [createdById], references: [id])
+  parentItem     Item     @relation("InventorySplit_parentItemIdToItem", fields: [parentItemId], references: [itemId], onDelete: Cascade)
+
+  @@index([childItemId])
+  @@index([parentItemId])
+}
+
+model ItemListing {
+  id                String            @id
+  itemId            String?
+  platformId        String
+  externalId        String?
+  status            String            @default("DRAFT")
+  listingPrice      Decimal?
+  listingCurrency   String?           @default("JPY")
+  listingUrl        String?
+  warehouseId       String?
+  note              String?
+  listedAt          DateTime?
+  expiresAt         DateTime?
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  sourceType        ListingSourceType @default(ITEM)
+  templateId        String?
+  quantity          Int               @default(1)
+  fulfilledQuantity Int               @default(0)
+  
+  item              Item?             @relation(fields: [itemId], references: [itemId], onDelete: Cascade)
+  platform          Platform          @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  template          SubSkuTemplate?   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  activities        ListingActivity[]
+
+  @@unique([itemId, platformId])
+  @@index([itemId])
+  @@index([platformId])
+  @@index([templateId])
+}
+
+model ListingActivity {
+  id          String            @id
+  listingId   String?
+  sourceType  ListingSourceType
+  templateId  String?
+  itemId      String?
+  platformId  String
+  action      String
+  status      String?
+  quantity    Int?
+  operatorId  String?
+  payload     Json?
+  createdAt   DateTime          @default(now())
+  
+  listing     ItemListing?      @relation(fields: [listingId], references: [id])
+  operator    User?             @relation(fields: [operatorId], references: [id])
+  platform    Platform          @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([listingId])
+  @@index([operatorId])
+  @@index([platformId])
+  @@index([templateId])
+}
+
+model Logistics {
+  id          String    @id
+  relatedType String
+  relatedId   String
+  fromCountry String?
+  toCountry   String?
+  fromNode    String?
+  toNode      String?
+  trackingNo  String?
+  cost        Decimal?
+  currency    String?
+  segments    Json?
+  allocations Json?
+  destination String?
+  departedAt  DateTime?
+  arrivedAt   DateTime?
+  status      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+
+  @@index([relatedType, relatedId])
+}
+
+model Platform {
+  id                String            @id
+  name              String            @unique
+  baseFeeRate       Float
+  shippingFee       Float?
+  tierRules         Json?
+  region            String?
+  market            String?
+  currency          String            @default("JPY")
+  feeSchema         Json?
+  shippingTemplates Json?
+  config            Json?
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  
+  listings          ItemListing[]
+  activities        ListingActivity[]
+  transactions      Transaction[]
+}
+
+model PurchaseDetail {
+  id               String        @id
+  purchaseOrderId  String
+  skuId            String
+  quantity         Int           @default(1)
+  unitPrice        Decimal?
+  allocatedCost    Decimal?
+  allocationMethod String?
+  itemIds          String[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime
+  
+  items            Item[]
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  sku              SKU           @relation(fields: [skuId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([skuId])
+}
+
+model PurchaseOrder {
+  id             String           @id
+  orderNumber    String           @unique
+  totalAmount    Decimal
+  currency       String
+  purchaseDate   DateTime
+  exchangeRateId String?
+  createdById    String?
+  remarks        String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  
+  items          Item[]
+  details        PurchaseDetail[]
+  createdBy      User?            @relation(fields: [createdById], references: [id])
+  exchangeRate   ExchangeRate?    @relation(fields: [exchangeRateId], references: [id])
+}
+
+model Role {
+  id           String         @id
+  name         String         @unique
+  description  String?
+  permissions  Json
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  userRoleLinks UserRoleLink[]
+}
+
+model SKU {
+  id              String           @id
+  categoryId      String?
+  name            String
+  skuNumber       String?
+  brand           String?
+  unit            String?
+  attributes      Json?
+  isComposite     Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime
+  
+  childSkus       CompositeSKU[]   @relation("CompositeSKU_childSkuIdToSKU")
+  parentSkus      CompositeSKU[]   @relation("CompositeSKU_parentSkuIdToSKU")
+  items           Item[]
+  purchaseDetails PurchaseDetail[]
+  category        Category?        @relation(fields: [categoryId], references: [id])
+  subSkuTemplates SubSkuTemplate[]
+  toySkus         ToySKU[]
+
+  @@unique([name, brand])
+  @@index([categoryId])
+  @@index([skuNumber])
+}
+
+model SubSkuTemplate {
+  id                       String        @id
+  skuId                    String
+  itemName                 String
+  itemSize                 String?
+  itemCondition            String        @default("NEW")
+  variantLabel             String?
+  itemColor                String?
+  photos                   String[]      @default([])
+  recommendedPrice         Decimal?
+  recommendedPriceCurrency String?       @default("JPY")
+  optionalAttributes       Json?
+  itemRemarks              String?
+  isActive                 Boolean       @default(true)
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime
+  availableQuantity        Int           @default(0)
+  listedQuantity           Int           @default(0)
+  reservedQuantity         Int           @default(0)
+  soldQuantity             Int           @default(0)
+  
+  items                    Item[]
+  listings                 ItemListing[]
+  sku                      SKU           @relation(fields: [skuId], references: [id], onDelete: Cascade)
+
+  @@unique([skuId, itemSize, itemCondition, variantLabel, itemColor])
+  @@index([isActive])
+  @@index([skuId])
+}
+
+model TransactionDetail {
+  id             String        @id
+  transactionId  String
+  itemId         String
+  quantity       Int           @default(1)
+  unitPrice      Decimal?
+  currency       String?
+  exchangeRateId String?
+  createdAt      DateTime      @default(now())
+  
+  exchangeRate   ExchangeRate? @relation(fields: [exchangeRateId], references: [id])
+  item           Item          @relation(fields: [itemId], references: [itemId])
+  transaction    Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([transactionId])
+}
+
+model UserActivity {
+  id         String   @id
+  userId     String
+  action     String
+  entityType String?
+  entityId   String?
+  ip         String?
+  userAgent  String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([userId])
+}
+
+model UserRoleLink {
+  id     String @id
+  userId String
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
 enum UserRole {
   ADMIN
   USER
@@ -274,4 +668,9 @@ enum ToyPurchaseStatus {
   DOMESTIC_IN_TRANSIT
   JAPAN_IN_TRANSIT
   JAPAN_ARRIVED
+}
+
+enum ListingSourceType {
+  ITEM
+  TEMPLATE
 }

@@ -4,8 +4,8 @@ import type { NextRequest } from 'next/server';
 // 需要认证的路由
 const protectedRoutes = [
   '/sales',
+  '/listings',
   '/warehouse',
-  '/toys/series',
   '/test',
   '/test-dialog',
   '/test-fix',
@@ -20,24 +20,19 @@ const protectedRoutes = [
 ];
 
 // 不需要认证的API路由（即使在保护路由下）
+// 支持前缀匹配，例如 '/api/sku' 会匹配 '/api/sku/*' 的所有路由
 const publicApiRoutes = [
-  '/api/items/create-sku',
-  '/api/items/update-sku',
-  '/api/items/delete-sku',
+  '/api/sku',
   '/api/items/categories',
-  '/api/toys/brands',
-  '/api/toys/series',
-  '/api/toys/characters',
-  '/api/toys/hierarchy',
-  '/api/toys/series-grouped'
+  '/api/listings'
 ];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // 检查是否是公开的API路由
+  // 检查是否是公开的API路由（支持前缀匹配）
   const isPublicApiRoute = publicApiRoutes.some(route => 
-    pathname === route
+    pathname === route || pathname.startsWith(route + '/')
   );
   
   // 检查是否是受保护的路由
@@ -78,8 +73,8 @@ export function middleware(request: NextRequest) {
         const expires = new Date(session.expires);
         
         if (expires > new Date()) {
-          // 会话有效，重定向到销售页
-          return NextResponse.redirect(new URL('/sales', request.url));
+          // 会话有效，重定向到库存页
+          return NextResponse.redirect(new URL('/inventory', request.url));
         }
       } catch {
         // Cookie解析失败，继续显示登录页

@@ -1,0 +1,82 @@
+{
+  "openapi": "3.0.0",
+  "info": { "title": "Shop CMS API", "version": "1.0.0" },
+  "components": {
+    "schemas": {
+      "Item": {
+        "type": "object",
+        "properties": {
+          "itemId": { "type": "string" },
+          "itemName": { "type": "string" },
+          "itemNumber": { "type": "string" },
+          "itemType": { "type": "string" },
+          "itemBrand": { "type": "string" },
+          "itemCondition": { "type": "string" },
+          "itemColor": { "type": "string" },
+          "itemSize": { "type": "string" },
+          "itemRemarks": { "type": "string" },
+          "photos": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["itemId","itemName","itemNumber","itemType","itemBrand","itemCondition","itemSize"]
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "itemId": { "type": "string" },
+          "orderStatus": { "type": "string" },
+          "purchasePrice": { "type": "string" },
+          "purchasePriceCurrency": { "type": "string" },
+          "purchasePriceExchangeRate": { "type": "string" },
+          "purchaseDate": { "type": "string", "format": "date-time" },
+          "purchasePlatform": { "type": "string" },
+          "soldPrice": { "type": "string" },
+          "soldPriceCurrency": { "type": "string" },
+          "soldPriceExchangeRate": { "type": "string" },
+          "soldDate": { "type": "string", "format": "date-time" },
+          "soldPlatform": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/inventory/items": {
+      "get": {
+        "summary": "List items",
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Item" } } } } } }
+      },
+      "post": {
+        "summary": "Create item",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Item" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/api/inventory/items/{itemId}": {
+      "get": { "summary": "Get item", "parameters": [{"name":"itemId","in":"path","required":true,"schema":{"type":"string"}}], "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Item"}}}} } },
+      "put": { "summary": "Update item", "parameters": [{"name":"itemId","in":"path","required":true,"schema":{"type":"string"}}], "responses": {"200": {"description": "OK"}} },
+      "delete": { "summary": "Delete item", "parameters": [{"name":"itemId","in":"path","required":true,"schema":{"type":"string"}}], "responses": {"200": {"description": "OK"}} }
+    },
+    "/api/inventory/items/grouped": { "get": { "summary": "Grouped by itemNumber" } },
+    "/api/inventory/items/autocomplete": { "get": { "summary": "Autocomplete name/number" } },
+    "/api/inventory/items/stats": { "get": { "summary": "Inventory stats" } },
+    "/api/inventory/items/months": { "get": { "summary": "Months list" } },
+    "/api/inventory/items/batch/status": { "post": { "summary": "Batch update status" } },
+    "/api/sku": { "get": { "summary": "List sku" }, "post": { "summary": "Create sku" } },
+    "/api/sku/{skuId}": { "get": { "summary": "Get sku" }, "put": { "summary": "Update sku" }, "delete": { "summary": "Delete sku" } },
+    "/api/sku/categories": { "get": { "summary": "List item type categories (SKU view)" } },
+    "/api/sales/transactions": { "get": { "summary": "List transactions" }, "post": { "summary": "Create transaction" } },
+    "/api/sales/transactions/{id}": { "get": { "summary": "Get transaction" }, "put": { "summary": "Update transaction" }, "delete": { "summary": "Delete transaction" } },
+    "/api/finance/exchange-rates": { "get": { "summary": "List exchange rates" }, "post": { "summary": "Create exchange rate" } },
+    "/api/finance/exchange-rates/{id}": { "get": { "summary": "Get exchange rate" }, "put": { "summary": "Update exchange rate" }, "delete": { "summary": "Delete exchange rate" } },
+    "/api/purchase/orders": { "get": { "summary": "List orders" }, "post": { "summary": "Create order" } },
+    "/api/purchase/orders/{id}": { "get": { "summary": "Get order" }, "put": { "summary": "Update order" }, "delete": { "summary": "Delete order" } },
+    "/api/purchase/orders/{orderId}/details": { "get": { "summary": "List details" }, "post": { "summary": "Create detail" } },
+    "/api/purchase/orders/{orderId}/details/{id}": { "get": { "summary": "Get detail" }, "put": { "summary": "Update detail" }, "delete": { "summary": "Delete detail" } },
+    "/api/logistics": { "get": { "summary": "List logistics" }, "post": { "summary": "Create logistics" } },
+    "/api/logistics/{id}": { "get": { "summary": "Get logistics" }, "put": { "summary": "Update logistics" }, "delete": { "summary": "Delete logistics" } },
+    "/api/shared/import/items": { "post": { "summary": "Import items CSV" } },
+    "/api/shared/export/inventory": { "post": { "summary": "Export items CSV" } }
+  }
+}
+
+

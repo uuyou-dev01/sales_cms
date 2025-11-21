@@ -67,48 +67,37 @@ export function TransactionList({
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/transactions/list?itemId=${itemId}`);
-      const data = await response.json();
-      
-      if (data.success && data.transactions) {
-        setTransactions(data.transactions);
-        calculateStats(data.transactions);
-      } else {
-        // 如果API不存在，使用模拟数据
-        const mockTransactions: Transaction[] = [
-          {
-            id: '1',
-            type: 'purchase',
-            amount: 100,
-            currency: 'CNY',
-            exchangeRate: 1,
-            amountCNY: 100,
-            date: '2025-01-01',
-            platform: '淘宝',
-            orderStatus: '在库',
-            domesticShipping: 10,
-            internationalShipping: 0,
-            remarks: '第一次采购',
-          },
-          {
-            id: '2',
-            type: 'sale',
-            amount: 2000,
-            currency: 'JPY',
-            exchangeRate: 0.05,
-            amountCNY: 100,
-            date: '2025-01-15',
-            platform: 'Mercari',
-            orderStatus: '已完成',
-            domesticShipping: 0,
-            internationalShipping: 15,
-            profit: -25, // 100 - 100 - 15 - 10 = -25
-            remarks: '第一次销售',
-          },
-        ];
-        setTransactions(mockTransactions);
-        calculateStats(mockTransactions);
-      }
+      const response = await fetch(`/api/sales/transactions?itemId=${itemId}`);
+      const json = await response.json();
+      const list = Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : [];
+      const mapped: Transaction[] = list.map((tx: any) => {
+        const isSale = !!(tx.soldPrice || tx.soldDate || tx.soldPlatform);
+        const amount = isSale ? parseFloat(tx.soldPrice || '0') : parseFloat(tx.purchasePrice || '0');
+        const currency = isSale ? (tx.soldPriceCurrency || 'CNY') : (tx.purchasePriceCurrency || 'CNY');
+        const rate = isSale ? parseFloat(tx.soldPriceExchangeRate || '1') : parseFloat(tx.purchasePriceExchangeRate || '1');
+        const date = isSale ? (tx.soldDate || tx.createdAt) : (tx.purchaseDate || tx.createdAt);
+        const platform = isSale ? (tx.soldPlatform || '') : (tx.purchasePlatform || '');
+        const profit = tx.itemNetProfit ? parseFloat(tx.itemNetProfit) : (tx.itemGrossProfit ? parseFloat(tx.itemGrossProfit) : undefined);
+        return {
+          id: tx.id,
+          type: isSale ? 'sale' : 'purchase',
+          amount: isNaN(amount) ? 0 : amount,
+          currency,
+          exchangeRate: isNaN(rate) ? 1 : rate,
+          amountCNY: (isNaN(amount) || isNaN(rate)) ? 0 : amount * rate,
+          date,
+          platform,
+          orderStatus: tx.orderStatus || '在库',
+          trackingNumber: tx.domesticTrackingNumber || tx.internationalTrackingNumber || undefined,
+          domesticShipping: parseFloat(tx.domesticShipping || '0') || 0,
+          internationalShipping: parseFloat(tx.internationalShipping || '0') || 0,
+          otherFees: Array.isArray(tx.otherFees) ? JSON.stringify(tx.otherFees) : (tx.otherFees ? String(tx.otherFees) : undefined),
+          remarks: undefined,
+          profit,
+        } as Transaction;
+      });
+      setTransactions(mapped);
+      calculateStats(mapped);
     } catch (error) {
       console.error('获取交易记录失败:', error);
       setTransactions([]);
@@ -172,10 +161,8 @@ export function TransactionList({
     }
 
     try {
-      const response = await fetch(`/api/transactions/delete`, {
+      const response = await fetch(`/api/sales/transactions/${transactionId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionId }),
       });
 
       if (response.ok) {
@@ -479,17 +466,33 @@ function TransactionEditForm({
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/transactions/update`, {
+      const isPurchase = transaction.type === 'purchase';
+      const payload: any = {
+        orderStatus: formData.orderStatus,
+        domesticTrackingNumber: formData.trackingNumber || null,
+        domesticShipping: String(parseFloat(formData.domesticShipping) || 0),
+        internationalShipping: String(parseFloat(formData.internationalShipping) || 0),
+        otherFees: formData.otherFees || undefined,
+        remarks: formData.remarks || undefined,
+      };
+      if (isPurchase) {
+        payload.purchasePrice = String(parseFloat(formData.amount));
+        payload.purchasePriceCurrency = formData.currency;
+        payload.purchasePriceExchangeRate = String(parseFloat(formData.exchangeRate) || 1);
+        payload.purchaseDate = formData.date;
+        payload.purchasePlatform = formData.platform;
+      } else {
+        payload.soldPrice = String(parseFloat(formData.amount));
+        payload.soldPriceCurrency = formData.currency;
+        payload.soldPriceExchangeRate = String(parseFloat(formData.exchangeRate) || 1);
+        payload.soldDate = formData.date;
+        payload.soldPlatform = formData.platform;
+      }
+
+      const response = await fetch(`/api/sales/transactions/${transaction.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transactionId: transaction.id,
-          ...formData,
-          amount: parseFloat(formData.amount),
-          exchangeRate: parseFloat(formData.exchangeRate),
-          domesticShipping: parseFloat(formData.domesticShipping),
-          internationalShipping: parseFloat(formData.internationalShipping),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {

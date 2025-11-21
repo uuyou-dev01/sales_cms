@@ -11,8 +11,8 @@ export default async function Home() {
       const expires = new Date(session.expires);
       
       if (expires > new Date()) {
-        // 用户已登录且会话有效，重定向到销售页面
-        redirect('/sales');
+        // 用户已登录且会话有效，重定向到库存总览
+        redirect('/inventory');
       }
     } catch {
       // Cookie解析失败，重定向到登录页面
